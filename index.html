@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v11.3</title>
+    <title>Legacy Line Charts v11.6</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -137,7 +137,7 @@
               teamName: 'Delano Tigers',
               logo: null,
               colors: { primary: '#fb923c', secondary: '#1f2937' },
-              arena: 'Delano Area Sports Arena, Delano',
+              arena: '',
               careerStats: {},
               pronunciations: {},
               careerSeasonData: {
@@ -407,7 +407,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '11.3',
+                version: '11.6',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -850,6 +850,8 @@
                       const dateMatch = fullLine.match(/^([A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2},?\s+\d{4}\s*@\s*\d{1,2}:\d{2}[ap]?m?)/i);
                       if (dateMatch) {
                         date = dateMatch[1];
+                        // Normalize time format: 7:00p -> 7:00pm
+                        date = date.replace(/(\d:\d{2})([ap])(?!m)/i, '$1$2m');
                       } else {
                         // Fallback - just take up to the time
                         const parts = fullLine.split(/\s+(?=[A-Z][a-z]+\s+[A-Z])/);
@@ -894,7 +896,8 @@
                     if (line.includes('@') && line.match(/\d{1,2}:\d{2}/)) {
                       const parts = line.split('@');
                       date = parts[0]?.trim() || '';
-                      time = parts[1]?.trim() || '';
+                      // Normalize time format: 7:00p -> 7:00pm
+                      time = (parts[1]?.trim() || '').replace(/(\d:\d{2})([ap])(?!m)/i, '$1$2m');
                     }
                     
                     // Location line - typically follows the date/time and contains arena name
@@ -2989,52 +2992,28 @@
                     </div>
                   </div>
 
-                  {/* C4 (24%) - CENTER: TEAM NAMES GRID + GAME INFO */}
-                  <div className="flex flex-col justify-between">
-                    <div className="bg-gray-100 rounded p-1 mb-0">
-                      <div className="flex gap-1" style={{ height: '70px' }}>
-                        <div className="grid gap-0" style={{ 
-                          gridTemplateColumns: 'repeat(3, 1fr)',
-                          gridTemplateRows: 'repeat(4, 1fr)',
-                          flex: '3'
-                        }}>
-                          {[...Array(12)].map((_, i) => (
-                            <div key={`left-${i}`} className="bg-white border border-gray-300"></div>
-                          ))}
-                        </div>
-                        <div style={{ width: '0.5fr' }}></div>
-                        <div className="grid gap-0" style={{ 
-                          gridTemplateColumns: 'repeat(2, 1fr)',
-                          gridTemplateRows: 'repeat(4, 1fr)',
-                          flex: '2'
-                        }}>
-                          {[...Array(8)].map((_, i) => (
-                            <div key={`right-${i}`} className="bg-white border border-gray-300"></div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex-1 flex flex-col items-center justify-end text-center" style={{ paddingBottom: '4px' }}>
-                      <div style={{ fontSize: 'clamp(14px, 1.8vw, 20px)', color: myTeamSetup.colors.primary }} className="font-black leading-tight">
+                  {/* C4 (24%) - CENTER: TEAM NAMES + GAME INFO */}
+                  <div className="flex flex-col justify-center">
+                    <div className="flex-1 flex flex-col items-center justify-center text-center">
+                      <div style={{ fontSize: 'clamp(17px, 2.2vw, 24px)', color: myTeamSetup.colors.primary }} className="font-black leading-tight">
                         {myTeamSetup.teamName}
                       </div>
-                      <div style={{ fontSize: 'clamp(7px, 0.8vw, 9px)' }} className="text-gray-700">
+                      <div style={{ fontSize: 'clamp(11px, 1.4vw, 15px)' }} className="text-gray-600">
                         ({myTeamData.record.w}-{myTeamData.record.l}-{myTeamData.record.t}, {myTeamData.section}, {myTeamData.conference})
                       </div>
                       
                       <div style={{ fontSize: 'clamp(10px, 1.3vw, 14px)', padding: '1px 0' }} className="font-semibold text-gray-600">vs</div>
                       
-                      <div style={{ fontSize: 'clamp(14px, 1.8vw, 20px)', color: opponentColors.primary }} className="font-black leading-tight">
+                      <div style={{ fontSize: 'clamp(17px, 2.2vw, 24px)', color: opponentColors.primary }} className="font-black leading-tight">
                         {opponentData.teamName} {opponentData.nickname}
                       </div>
-                      <div style={{ fontSize: 'clamp(7px, 0.8vw, 9px)' }} className="text-gray-700">
+                      <div style={{ fontSize: 'clamp(11px, 1.4vw, 15px)' }} className="text-gray-600">
                         ({opponentData.record.w}-{opponentData.record.l}-{opponentData.record.t}, {opponentData.section}, {opponentData.conference})
                       </div>
                       
                       <div style={{ fontSize: 'clamp(11px, 1.4vw, 15px)', fontWeight: '800', marginTop: '2px' }} className="text-gray-600">Game #{(myTeamData.record.w + myTeamData.record.l + myTeamData.record.t + 1)}</div>
                       {myTeamData.currentGame && myTeamData.currentGame.date && (
-                        <div style={{ fontSize: 'clamp(7px, 0.8vw, 9px)' }} className="text-gray-700">
+                        <div style={{ fontSize: 'clamp(11px, 1.4vw, 15px)' }} className="text-gray-600">
                           {myTeamData.currentGame.date}{myTeamData.currentGame.time ? ` @ ${myTeamData.currentGame.time}` : ''}
                           {myTeamData.currentGame.location ? ` at ${myTeamData.currentGame.location}` : ''}
                         </div>
