@@ -3344,7 +3344,7 @@
                               {forwards.map((player, idx) => (
                                 <tr key={player.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                   <td className="border font-bold text-center" style={{ padding }}>{player.number}</td>
-                                  <td className="border" style={{ padding, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.firstName} {player.lastName}</td>
+                                  <td className="border" style={{ padding, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.firstName} {player.lastName}{player.shoots ? ` (${player.shoots})` : ''}</td>
                                   <td className="border text-center" style={{ padding }}>{convertGradeToText(player.grade)}</td>
                                   <td className="border text-center" style={{ padding }}>{player.stats.gp}</td>
                                   <td className="border text-center" style={{ padding, backgroundColor: isMaxStat(player.stats.g, fwdMaxStats.g) ? '#FFFF00' : 'transparent' }}>{player.stats.g}</td>
@@ -3390,7 +3390,7 @@
                               {defense.map((player, idx) => (
                                 <tr key={player.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                   <td className="border font-bold text-center" style={{ padding }}>{player.number}</td>
-                                  <td className="border" style={{ padding, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.firstName} {player.lastName}</td>
+                                  <td className="border" style={{ padding, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.firstName} {player.lastName}{player.shoots ? ` (${player.shoots})` : ''}</td>
                                   <td className="border text-center" style={{ padding }}>{convertGradeToText(player.grade)}</td>
                                   <td className="border text-center" style={{ padding }}>{player.stats.gp}</td>
                                   <td className="border text-center" style={{ padding, backgroundColor: isMaxStat(player.stats.g, defMaxStats.g) ? '#FFFF00' : 'transparent' }}>{player.stats.g}</td>
