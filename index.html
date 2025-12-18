@@ -800,7 +800,7 @@
                       const line = lines[i];
                       // Match lines that have a team name followed by period scores (numbers separated by tabs/spaces)
                       // e.g., "Rosemount	1	2	1	4" or " Park of Cottage Grove	0	2	0	2"
-                      const tableMatch = line.match(/^\s*([A-Za-z][A-Za-z\s\/\-\.of]+?)\s+\d+\s+\d+/);
+                      const tableMatch = line.match(/^\s*([A-Za-z][A-Za-z\s\/\-\.of']+?)\s+\d+\s+\d+/);
                       if (tableMatch) {
                         const foundTeam = tableMatch[1].trim();
                         // Check if this is our team or opponent
