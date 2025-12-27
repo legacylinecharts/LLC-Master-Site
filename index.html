@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v13.3.2</title>
+    <title>Legacy Line Charts v14.0</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -321,7 +321,26 @@
           const getInitialTeamSetup = () => {
             if (SUBSCRIBER_MODE && EMBEDDED_CONFIG?.teamSetup) {
               console.log('🏒 SUBSCRIBER MODE: Loading embedded team config');
-              return EMBEDDED_CONFIG.teamSetup;
+              
+              // Start with embedded config for team branding
+              const baseConfig = { ...EMBEDDED_CONFIG.teamSetup };
+              
+              // Try to load pronunciations from localStorage (editable by subscriber coach)
+              try {
+                const saved = localStorage.getItem('myTeamSetup');
+                if (saved) {
+                  const savedData = JSON.parse(saved);
+                  // Merge saved pronunciations into embedded config
+                  if (savedData.pronunciations) {
+                    baseConfig.pronunciations = savedData.pronunciations;
+                    console.log('📋 Loaded saved pronunciations from localStorage');
+                  }
+                }
+              } catch (error) {
+                console.error('Error loading saved pronunciations:', error);
+              }
+              
+              return baseConfig;
             }
             
             // Master site: try to load from localStorage first
@@ -688,7 +707,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '13.3.2',
+                version: '14.0',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -2925,7 +2944,7 @@
                     
                     <div className="p-6">
                       <div className="bg-purple-50 p-4 rounded mb-4">
-                        <h3 className="font-bold mb-2">📦 Subscriber Build Export v13.3.2</h3>
+                        <h3 className="font-bold mb-2">📦 Subscriber Build Export v14.0</h3>
                         <p className="text-sm text-gray-600 mb-2">
                           Copy this JSON configuration and send it to Claude to build a customized subscriber version. 
                         </p>
