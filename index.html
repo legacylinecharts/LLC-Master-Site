@@ -933,7 +933,8 @@
                     !potentialName.includes('Game') && 
                     !potentialName.includes('©') &&
                     !potentialName.includes('SportsEngine') &&
-                    !potentialName.includes('powered by')) {
+                    !potentialName.includes('powered by') &&
+                    potentialName !== 'Out of State') {
                   teamName = potentialName;
                   console.log('✅ Found team name:', teamName);
                 }
