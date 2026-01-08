@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v14.4</title>
+    <title>Legacy Line Charts v14.6</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -707,7 +707,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '14.4',
+                version: '14.6',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -1381,7 +1381,7 @@
                   const position = fields[2];
                   const grade = fields[3];
                   
-                  if (/^\d+$/.test(number) && (/^[FDG]$/.test(position) || position === 'D|F') && /^\d{1,2}$/.test(grade)) {
+                  if (/^\d+$/.test(number) && (/^[FDG]$/.test(position) || position === 'D|F' || position === 'F|D') && /^\d{1,2}$/.test(grade)) {
                     console.log('✓ Found player (tab-separated):', { number, name, position, grade });
                     
                     // Strip (Capt.) or (Capt) or * from names
@@ -3015,7 +3015,7 @@
                     
                     <div className="p-6">
                       <div className="bg-purple-50 p-4 rounded mb-4">
-                        <h3 className="font-bold mb-2">📦 Subscriber Build Export v14.4</h3>
+                        <h3 className="font-bold mb-2">📦 Subscriber Build Export v14.6</h3>
                         <p className="text-sm text-gray-600 mb-2">
                           Copy this JSON configuration and send it to Claude to build a customized subscriber version. 
                         </p>
@@ -3246,7 +3246,7 @@
                         <Settings size={16} /> My Team Career Stats
                       </button>
                     )}
-                    <button onClick={() => setShowImport(true)} className="bg-white text-blue-900 px-3 py-1.5 rounded hover:bg-gray-100 flex items-center gap-1 text-sm font-semibold">
+                    <button onClick={() => { setImportStep('myTeamHome'); setShowImport(true); }} className="bg-white text-blue-900 px-3 py-1.5 rounded hover:bg-gray-100 flex items-center gap-1 text-sm font-semibold">
                       <Upload size={16} /> Import Next Game Data
                     </button>
                     <button onClick={() => setShowPronunciations(true)} className="bg-white text-blue-900 px-3 py-1.5 rounded hover:bg-gray-100 flex items-center gap-1 text-sm font-semibold">
