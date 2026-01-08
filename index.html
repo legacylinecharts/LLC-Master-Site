@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v14.3</title>
+    <title>Legacy Line Charts v14.4</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -707,7 +707,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '14.3',
+                version: '14.4',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -1455,8 +1455,8 @@
                       p.firstName?.substring(0, 3)?.toUpperCase() === firstName.substring(0, 3)?.toUpperCase()
                     );
                     
-                    // Normalize D|F to D for consistency
-                    const normalizedPosition = position === 'D|F' ? 'D' : position;
+                    // Normalize D|F and F|D to D for consistency
+                    const normalizedPosition = (position === 'D|F' || position === 'F|D') ? 'D' : position;
                     
                     roster.push({
                       id: `${number}-${lastName}`,
@@ -1484,7 +1484,7 @@
                   // Example: 1Evan GeyenG126' 3"190LC2007
                   //          ^number ^name  ^pos^grade ^height^weight^shoots^year
                   
-                  const concatMatch = line.match(/^(\d+)([A-Za-z\s\-'\.]+?)(D\|F|[FDG])(\d{1,2})/);
+                  const concatMatch = line.match(/^(\d+)([A-Za-z\s\-'\.]+?)(D\|F|F\|D|[FDG])(\d{1,2})/);
                   
                   if (concatMatch) {
                     const number = concatMatch[1];
@@ -1557,8 +1557,8 @@
                       p.firstName?.substring(0, 3)?.toUpperCase() === firstName.substring(0, 3)?.toUpperCase()
                     );
                     
-                    // Normalize D|F to D for consistency
-                    const normalizedPosition = position === 'D|F' ? 'D' : position;
+                    // Normalize D|F and F|D to D for consistency
+                    const normalizedPosition = (position === 'D|F' || position === 'F|D') ? 'D' : position;
                     
                     roster.push({
                       id: `${number}-${lastName}`,
@@ -1625,8 +1625,8 @@
                 
                 if (!/^\d+$/.test(number)) continue;
                 
-                // Detect new format: check if fields[2] is a position (F, D, G, D|F)
-                const hasNewFormat = fields[2] && /^(F|D|G|D\|F)$/i.test(fields[2]);
+                // Detect new format: check if fields[2] is a position (F, D, G, D|F, F|D)
+                const hasNewFormat = fields[2] && /^(F|D|G|D\|F|F\|D)$/i.test(fields[2]);
                 
                 // Extract Pos and Grade from new format (if present)
                 let statsPosition = null;
@@ -1653,8 +1653,8 @@
                   if (player && fields.length >= (6 + fieldOffset)) {
                     // Validate Pos and Grade against roster (if new format)
                     if (hasNewFormat) {
-                      const normalizedStatsPos = statsPosition === 'D|F' ? 'D' : statsPosition;
-                      const normalizedRosterPos = player.position === 'D|F' ? 'D' : player.position;
+                      const normalizedStatsPos = (statsPosition === 'D|F' || statsPosition === 'F|D') ? 'D' : statsPosition;
+                      const normalizedRosterPos = (player.position === 'D|F' || player.position === 'F|D') ? 'D' : player.position;
                       
                       if (normalizedRosterPos !== normalizedStatsPos) {
                         console.warn(`⚠️ Position mismatch for ${cleanName}: Roster=${player.position}, Stats=${statsPosition}`);
@@ -3015,7 +3015,7 @@
                     
                     <div className="p-6">
                       <div className="bg-purple-50 p-4 rounded mb-4">
-                        <h3 className="font-bold mb-2">📦 Subscriber Build Export v14.3</h3>
+                        <h3 className="font-bold mb-2">📦 Subscriber Build Export v14.4</h3>
                         <p className="text-sm text-gray-600 mb-2">
                           Copy this JSON configuration and send it to Claude to build a customized subscriber version. 
                         </p>
