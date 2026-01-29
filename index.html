@@ -3303,10 +3303,9 @@
                         <>
                           <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', wordWrap: 'break-word', color: myTeamSetup.colors.primary }} className="leading-tight">
                             {myTeamData.teamName} <span className={`font-black`} style={{ 
-                              color: myTeamData.lastGame.result === 'W' ? '#00AA00' :
-                                     myTeamData.lastGame.result === 'L' ? '#CC0000' :
-                                     '#000000'
-                            }}>{myTeamData.lastGame.ourScore} - {myTeamData.lastGame.oppScore}</span> {myTeamData.lastGame.opponent}
+                              <span className={`font-black`} style={{ 
+  				color: '#000000'
+			}}>{myTeamData.lastGame.ourScore} - {myTeamData.lastGame.oppScore}</span> {myTeamData.lastGame.opponent}
                           </div>
                           <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', wordWrap: 'break-word', color: myTeamSetup.colors.primary }}>{myTeamData.lastGame.date}</div>
                         </>
@@ -3463,10 +3462,8 @@
                         <>
                           <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', wordWrap: 'break-word', color: opponentColors.primary }} className="leading-tight">
                             {opponentData.teamName} <span className={`font-black`} style={{
-                              color: opponentData.lastGame.result === 'W' ? '#00AA00' :
-                                     opponentData.lastGame.result === 'L' ? '#CC0000' :
-                                     '#000000'
-                            }}>{opponentData.lastGame.ourScore} - {opponentData.lastGame.oppScore}</span> {opponentData.lastGame.opponent}
+  				color: '#000000'
+			}}>{opponentData.lastGame.ourScore} - {opponentData.lastGame.oppScore}</span> {opponentData.lastGame.opponent}
                           </div>
                           <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', wordWrap: 'break-word', color: opponentColors.primary }}>{opponentData.lastGame.date}</div>
                         </>
