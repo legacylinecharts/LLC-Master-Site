@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v14.7</title>
+    <title>Legacy Line Charts v14.7.2</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -316,6 +316,17 @@
         // ============================================================
 
         const HockeyLinesChart = () => {
+          // Helper function to determine if a color is dark
+          const isColorDark = (hexColor) => {
+            if (!hexColor) return false;
+            const hex = hexColor.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            return brightness < 128; // Dark if brightness less than 128
+          };
+          
           // Initialize myTeamSetup from EMBEDDED_CONFIG if in subscriber mode
           const getInitialTeamSetup = () => {
             if (SUBSCRIBER_MODE && EMBEDDED_CONFIG?.teamSetup) {
@@ -706,7 +717,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '14.7',
+                version: '14.7.2',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -3014,7 +3025,7 @@
                     
                     <div className="p-6">
                       <div className="bg-purple-50 p-4 rounded mb-4">
-                        <h3 className="font-bold mb-2">📦 Subscriber Build Export v14.7</h3>
+                        <h3 className="font-bold mb-2">📦 Subscriber Build Export v14.7.2</h3>
                         <p className="text-sm text-gray-600 mb-2">
                           Copy this JSON configuration and send it to Claude to build a customized subscriber version. 
                         </p>
@@ -3286,6 +3297,13 @@
 
               {/* Print Page 1 */}
               <div className="print-page-1 bg-white p-0 max-w-7xl mx-auto" style={{ maxWidth: '7.875in' }}>
+                {/* Calculate dynamic text colors based on background darkness */}
+                {(() => {
+                  const leftGameTextColor = isColorDark(myTeamSetup.colors.secondary) ? '#FFFFFF' : myTeamSetup.colors.primary;
+                  const rightGameTextColor = isColorDark(opponentColors.secondary) ? '#FFFFFF' : opponentColors.primary;
+                  
+                  return (
+                <>
                 {/* New 7-Column Header */}
                 <div className="rounded-lg overflow-hidden mb-0" style={{ 
                   background: `linear-gradient(to right, ${myTeamSetup.colors.secondary} 0%, white 34%, white 66%, ${opponentColors.secondary} 100%)`,
@@ -3298,34 +3316,34 @@
                   {/* C1 (18%) - MY TEAM LAST/NEXT GAMES */}
                   <div className="flex flex-col justify-between text-center" style={{ padding: '4px', overflow: 'hidden' }}>
                     <div className="flex-1 flex flex-col justify-center">
-                      <div style={{ fontSize: 'clamp(9px, 1vw, 12px)', color: myTeamSetup.colors.primary }} className="font-bold">LAST GAME</div>
+                      <div style={{ fontSize: 'clamp(9px, 1vw, 12px)', color: leftGameTextColor }} className="font-bold">LAST GAME</div>
                       {myTeamData.lastGame ? (
                         <>
-                          <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', wordWrap: 'break-word', color: myTeamSetup.colors.primary }} className="leading-tight">
+                          <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', wordWrap: 'break-word', color: leftGameTextColor }} className="leading-tight">
                             {myTeamData.teamName} <span className={`font-black`} style={{ 
   				color: '#000000'
 			}}>{myTeamData.lastGame.ourScore} - {myTeamData.lastGame.oppScore}</span> {myTeamData.lastGame.opponent}
                           </div>
-                          <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', wordWrap: 'break-word', color: myTeamSetup.colors.primary }}>{myTeamData.lastGame.date}</div>
+                          <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', wordWrap: 'break-word', color: leftGameTextColor }}>{myTeamData.lastGame.date}</div>
                         </>
                       ) : (
-                        <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', color: myTeamSetup.colors.primary }}>N/A</div>
+                        <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', color: leftGameTextColor }}>N/A</div>
                       )}
                     </div>
                     
                     <div className="flex-1 flex flex-col justify-center">
-                      <div style={{ fontSize: 'clamp(9px, 1vw, 12px)', color: myTeamSetup.colors.primary }} className="font-bold">NEXT GAME</div>
+                      <div style={{ fontSize: 'clamp(9px, 1vw, 12px)', color: leftGameTextColor }} className="font-bold">NEXT GAME</div>
                       {myTeamData.nextGame && myTeamData.nextGame.opponent && myTeamData.nextGame.opponent !== 'TBD' ? (
                         <>
-                          <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', wordWrap: 'break-word', color: myTeamSetup.colors.primary }} className="font-bold leading-tight">
+                          <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', wordWrap: 'break-word', color: leftGameTextColor }} className="font-bold leading-tight">
                             {myTeamData.nextGame.isHome ? 'vs' : 'at'} {myTeamData.nextGame.opponent}
                           </div>
-                          <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', wordWrap: 'break-word', color: myTeamSetup.colors.primary }}>
+                          <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', wordWrap: 'break-word', color: leftGameTextColor }}>
                             {myTeamData.nextGame.date} @ {myTeamData.nextGame.time}
                           </div>
                         </>
                       ) : (
-                        <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', color: myTeamSetup.colors.primary }}>TBD</div>
+                        <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', color: leftGameTextColor }}>TBD</div>
                       )}
                     </div>
                   </div>
@@ -3456,38 +3474,41 @@
                   {/* C7 (18%) - OPPONENT LAST/NEXT GAMES */}
                   <div className="flex flex-col justify-between text-center" style={{ padding: '4px', overflow: 'hidden' }}>
                     <div className="flex-1 flex flex-col justify-center">
-                      <div style={{ fontSize: 'clamp(9px, 1vw, 12px)', color: opponentColors.primary }} className="font-bold">LAST GAME</div>
+                      <div style={{ fontSize: 'clamp(9px, 1vw, 12px)', color: rightGameTextColor }} className="font-bold">LAST GAME</div>
                       {opponentData.lastGame ? (
                         <>
-                          <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', wordWrap: 'break-word', color: opponentColors.primary }} className="leading-tight">
+                          <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', wordWrap: 'break-word', color: rightGameTextColor }} className="leading-tight">
                             {opponentData.teamName} <span className={`font-black`} style={{
   				color: '#000000'
 			}}>{opponentData.lastGame.ourScore} - {opponentData.lastGame.oppScore}</span> {opponentData.lastGame.opponent}
                           </div>
-                          <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', wordWrap: 'break-word', color: opponentColors.primary }}>{opponentData.lastGame.date}</div>
+                          <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', wordWrap: 'break-word', color: rightGameTextColor }}>{opponentData.lastGame.date}</div>
                         </>
                       ) : (
-                        <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', color: opponentColors.primary }}>N/A</div>
+                        <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', color: rightGameTextColor }}>N/A</div>
                       )}
                     </div>
                     
                     <div className="flex-1 flex flex-col justify-center">
-                      <div style={{ fontSize: 'clamp(9px, 1vw, 12px)', color: opponentColors.primary }} className="font-bold">NEXT GAME</div>
+                      <div style={{ fontSize: 'clamp(9px, 1vw, 12px)', color: rightGameTextColor }} className="font-bold">NEXT GAME</div>
                       {opponentData.nextGame && opponentData.nextGame.opponent && opponentData.nextGame.opponent !== 'TBD' ? (
                         <>
-                          <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', wordWrap: 'break-word', color: opponentColors.primary }} className="font-bold leading-tight">
+                          <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', wordWrap: 'break-word', color: rightGameTextColor }} className="font-bold leading-tight">
                             {opponentData.nextGame.isHome ? 'vs' : 'at'} {opponentData.nextGame.opponent}
                           </div>
-                          <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', wordWrap: 'break-word', color: opponentColors.primary }}>
+                          <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', wordWrap: 'break-word', color: rightGameTextColor }}>
                             {opponentData.nextGame.date} @ {opponentData.nextGame.time}
                           </div>
                         </>
                       ) : (
-                        <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', color: opponentColors.primary }}>TBD</div>
+                        <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', color: rightGameTextColor }}>TBD</div>
                       )}
                     </div>
                   </div>
                 </div>
+                </>
+                  );
+                })()}
 
                 {/* Available Players */}
                 <div className="no-print bg-gray-100 rounded p-2 mb-1">
