@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v14.7.4</title>
+    <title>Legacy Line Charts v14.7.5</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -131,7 +131,7 @@
         // with logos and team colors from Legacy Hockey
         // ============================================================
         const MSHSL_TEAMS = {
-          "academy of holy angels stars": { name: "Academy of Holy Angels", nickname: "Stars", logo: "https://cdn2.sportngin.com/attachments/team/5dca-151689530/holy-angels-stars-hockey-_1__large_square.png ", primaryColor: "#0000BA", secondaryColor: "#E39E1D" },
+          "academy of holy angels stars": { name: "Academy of Holy Angels", nickname: "Stars", logo: "https://cdn2.sportngin.com/attachments/team/5dca-151689530/holy-angels-stars-hockey-_1__large_square.png", primaryColor: "#0000BA", secondaryColor: "#E39E1D" },
           "albert lea tigers": { name: "Albert Lea", nickname: "Tigers", logo: "https://cdn2.sportngin.com/attachments/team/c7d9-149891114/AlbertLea_large_square.png", primaryColor: "#0000BA", secondaryColor: "#C90000" },
           "alexandria cardinals": { name: "Alexandria", nickname: "Cardinals", logo: "https://cdn3.sportngin.com/attachments/team/6b78-151624918/1alexandria-cardinals-hockey_large_square.png", primaryColor: "#010101", secondaryColor: "#CF2329" },
           "andover huskies": { name: "Andover", nickname: "Huskies", logo: "https://cdn4.sportngin.com/attachments/team/7f7f-151913518/andover-huskies-hockey-_1__large_square.png", primaryColor: "#000000", secondaryColor: "#977501" },
@@ -160,7 +160,7 @@
           "crookston pirates": { name: "Crookston", nickname: "Pirates", logo: "https://cdn2.sportngin.com/attachments/team/b077-151779804/crookston-pirates-hockey_large_square.png", primaryColor: "#2E1867", secondaryColor: "#F5DA19" },
           "delano tigers": { name: "Delano", nickname: "Tigers", logo: "https://cdn3.sportngin.com/attachments/team/5112-152073362/1delano-tigers-hockey_large_square_large_square.png", primaryColor: "#000000", secondaryColor: "#FC6418" },
           "detroit lakes lakers": { name: "Detroit Lakes", nickname: "Lakers", logo: "https://cdn2.sportngin.com/attachments/team/04ca-151862469/07ac69be6bb11994b72c9207dc591e1b_large_square.png", primaryColor: "#BD0000", secondaryColor: "#C0C0C0" },
-          "dodge county wildcats": { name: "Dodge County", nickname: "Wildcats", logo: "https://cdn3.sportngin.com/attachments/team/f13c-151914171/1wildcat-logo-2_large_square_large_square.png ", primaryColor: "#000005", secondaryColor: "#2B60DE" },
+          "dodge county wildcats": { name: "Dodge County", nickname: "Wildcats", logo: "https://cdn3.sportngin.com/attachments/team/f13c-151914171/1wildcat-logo-2_large_square_large_square.png", primaryColor: "#000005", secondaryColor: "#2B60DE" },
           "duluth denfeld hunters": { name: "Duluth Denfeld", nickname: "Hunters", logo: "https://cdn2.sportngin.com/attachments/team/9b7c-152161278/Untitled-1_large_square.png", primaryColor: "#56012B", secondaryColor: "#BFA04D" },
           "duluth east greyhounds": { name: "Duluth East", nickname: "Greyhounds", logo: "https://cdn4.sportngin.com/attachments/team/9bc8-215114884/DuluthEastLogo_large_square.png", primaryColor: "#000005", secondaryColor: "#CC0202" },
           "duluth marshall hilltoppers": { name: "Duluth Marshall", nickname: "Hilltoppers", logo: "https://cdn3.sportngin.com/attachments/team/3c60-151768307/download-_3__large_square.png", primaryColor: "#000000", secondaryColor: "#F7C300" },
@@ -272,8 +272,7 @@
           "winona winhawks": { name: "Winona", nickname: "Winhawks", logo: "https://cdn3.sportngin.com/attachments/team/2400-149919147/winona-hawks-hockey_large_square.png", primaryColor: "#000000", secondaryColor: "#DF5D1F" },
           "woodbury royals": { name: "Woodbury", nickname: "Royals", logo: "https://cdn2.sportngin.com/attachments/team/946d-151943495/1woodbury-royals-hockey_large_square_large_square.png", primaryColor: "#666666", secondaryColor: "#023399" },
           "worthington trojans": { name: "Worthington", nickname: "Trojans", logo: "https://cdn4.sportngin.com/attachments/team/0122-150042417/worthington-trojans-hockey_large_square.png", primaryColor: "#000000", secondaryColor: "#9C0202" }
-        };        // Team lookup function with fuzzy matching
-        const lookupTeam = (searchName) => {
+        };        const lookupTeam = (searchName) => {
           if (!searchName) return null;
           
           const normalizedSearch = searchName.toLowerCase().trim();
@@ -455,10 +454,21 @@
             showScoutNotes: true
           });
           
-          const [diagramImages, setDiagramImages] = useState({
-            image1: null,
-            image2: null,
-            image3: null
+          const [diagramImages, setDiagramImages] = useState(() => {
+            try {
+              const saved = localStorage.getItem('hockey-scout-diagramImages');
+              if (saved) {
+                console.log('📋 Loading saved diagram images from localStorage');
+                return JSON.parse(saved);
+              }
+            } catch (error) {
+              console.error('Error loading saved diagram images:', error);
+            }
+            return {
+              image1: null,
+              image2: null,
+              image3: null
+            };
           });
 
           const [showSetup, setShowSetup] = useState(false);
@@ -632,6 +642,16 @@
             }
           }, [myTeamData]);
 
+          // Save diagram images to localStorage whenever they change
+          useEffect(() => {
+            try {
+              localStorage.setItem('hockey-scout-diagramImages', JSON.stringify(diagramImages));
+              console.log('💾 Saved diagram images to localStorage');
+            } catch (error) {
+              console.error('Error saving diagram images:', error);
+            }
+          }, [diagramImages]);
+
           // Helper Functions
           const openHelp = (type, season = '') => {
             let content = { ...helpContents[type] };
@@ -716,7 +736,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '14.7.4',
+                version: '14.7.5',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -3024,7 +3044,7 @@
                     
                     <div className="p-6">
                       <div className="bg-purple-50 p-4 rounded mb-4">
-                        <h3 className="font-bold mb-2">📦 Subscriber Build Export v14.7.4</h3>
+                        <h3 className="font-bold mb-2">📦 Subscriber Build Export v14.7.5</h3>
                         <p className="text-sm text-gray-600 mb-2">
                           Copy this JSON configuration and send it to Claude to build a customized subscriber version. 
                         </p>
@@ -3928,7 +3948,10 @@
 
                 {/* Diagrams & Notes */}
                 <div className="mt-2" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <h2 style={{ fontSize: '14px', color: 'black' }} className="font-bold mb-1">Pre-Game Preparation - Diagrams & Notes</h2>
+                  <div className="flex justify-between items-center mb-1">
+                    <h2 style={{ fontSize: '14px', color: 'black' }} className="font-bold">Pre-Game Preparation - Diagrams & Notes</h2>
+                    <span className="no-print text-xs text-gray-500 italic">📸 Images saved automatically</span>
+                  </div>
                   
                   <div style={{ display: 'flex', gap: '4px', flexGrow: 1 }}>
                     {/* COLUMN 1: Large diagram (60%) */}
