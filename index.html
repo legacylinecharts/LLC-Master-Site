@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v14.7.7</title>
+    <title>Legacy Line Charts v16.0</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -345,6 +345,11 @@
                     baseConfig.pronunciations = savedData.pronunciations;
                     console.log('📋 Loaded saved pronunciations from localStorage');
                   }
+                  // Merge saved postHSInfo into embedded config
+                  if (savedData.postHSInfo) {
+                    baseConfig.postHSInfo = savedData.postHSInfo;
+                    console.log('📋 Loaded saved postHSInfo from localStorage');
+                  }
                 }
               } catch (error) {
                 console.error('Error loading saved pronunciations:', error);
@@ -372,6 +377,7 @@
               arena: '',
               careerStats: {},
               pronunciations: {},
+              postHSInfo: {},
               careerSeasonData: {
                 season1: '',
                 season2: '',
@@ -399,7 +405,7 @@
               record: { w: 0, l: 0, t: 0 },
               section: '2A',
               conference: 'WCC',
-              stats: { ppPct: 0, pkPct: 0, gpg: 0, gapg: 0 },
+              stats: { ppPct: 0, pkPct: 0, gpg: 0, gapg: 0, ppGoals: 0, ppOpp: 0, pkOpp: 0, pkGoalsAllowed: 0 },
               roster: [],
               nextGame: { gameNum: '', opponent: '', date: '', location: '', oppRecord: '', oppSection: '', oppConference: '' },
               currentGame: { gameNum: '', opponent: '', date: '', time: '', location: '', isHome: false },
@@ -418,7 +424,7 @@
             record: { w: 0, l: 0, t: 0 },
             section: '',
             conference: '',
-            stats: { ppPct: 0, pkPct: 0, gpg: 0, gapg: 0 },
+            stats: { ppPct: 0, pkPct: 0, gpg: 0, gapg: 0, ppGoals: 0, ppOpp: 0, pkOpp: 0, pkGoalsAllowed: 0 },
             roster: [],
             headCoach: { name: '', careerRecord: { w: 0, l: 0, t: 0 }, seasonRecord: { w: 0, l: 0, t: 0 } },
             assistantCoaches: []
@@ -430,30 +436,69 @@
               const saved = localStorage.getItem('hockey-scout-lines');
               if (saved) {
                 console.log('📋 Loading saved line assignments from localStorage');
-                return JSON.parse(saved);
+                const parsed = JSON.parse(saved);
+                // In subscriber mode: normalize any legacy colors (GREEN/RED/BLUE/YELLOW)
+                // to WHITE. Coach-chosen colors (anything else) are preserved.
+                if (SUBSCRIBER_MODE) {
+                  const legacyColors = ['GREEN', 'RED', 'BLUE', 'YELLOW'];
+                  const normalize = (color) => legacyColors.includes(color) ? 'WHITE' : (color || 'WHITE');
+                  if (parsed.line1) parsed.line1.color = normalize(parsed.line1.color);
+                  if (parsed.line2) parsed.line2.color = normalize(parsed.line2.color);
+                  if (parsed.line3) parsed.line3.color = normalize(parsed.line3.color);
+                  if (parsed.line4) parsed.line4.color = normalize(parsed.line4.color);
+                  if (parsed.d1) parsed.d1.color = normalize(parsed.d1.color);
+                  if (parsed.d2) parsed.d2.color = normalize(parsed.d2.color);
+                  if (parsed.d3) parsed.d3.color = normalize(parsed.d3.color);
+                  if (parsed.goalies) {
+                    parsed.goalies.starterColor = normalize(parsed.goalies.starterColor);
+                    parsed.goalies.backupColor  = normalize(parsed.goalies.backupColor);
+                  }
+                }
+                return parsed;
               }
             } catch (error) {
               console.error('Error loading saved lines:', error);
             }
             return {
-              line1: { lw: null, c: null, rw: null, color: 'GREEN' },
-              line2: { lw: null, c: null, rw: null, color: 'RED' },
-              line3: { lw: null, c: null, rw: null, color: 'BLUE' },
-              line4: { lw: null, c: null, rw: null, color: 'YELLOW' },
-              d1: { ld: null, rd: null, color: 'GREEN' },
-              d2: { ld: null, rd: null, color: 'RED' },
-              d3: { ld: null, rd: null, color: 'BLUE' },
-              goalies: { starter: null, starterColor: 'YELLOW', backup: null, backupColor: 'WHITE' }
+              line1: { lw: null, c: null, rw: null, color: 'WHITE' },
+              line2: { lw: null, c: null, rw: null, color: 'WHITE' },
+              line3: { lw: null, c: null, rw: null, color: 'WHITE' },
+              line4: { lw: null, c: null, rw: null, color: 'WHITE' },
+              d1: { ld: null, rd: null, color: 'WHITE' },
+              d2: { ld: null, rd: null, color: 'WHITE' },
+              d3: { ld: null, rd: null, color: 'WHITE' },
+              goalies: { starter: null, starterColor: 'WHITE', backup: null, backupColor: 'WHITE' }
             };
           };
 
           const [lines, setLines] = useState(getInitialLines);
 
-          const [coachNotes, setCoachNotes] = useState({
-            pk: '',
-            pp: '',
-            scoutNotes: { powerPlay: '', penaltyKill: '', keyPlayers: '' },
-            showScoutNotes: true
+          const [coachNotes, setCoachNotes] = useState(() => {
+            try {
+              const saved = localStorage.getItem('hockey-scout-coachNotes');
+              if (saved) {
+                const parsed = JSON.parse(saved);
+                // Ensure new fields exist for older saved data
+                return {
+                  pk: parsed.pk || '',
+                  pp: parsed.pp || '',
+                  pkTitle: parsed.pkTitle || 'Add Notes',
+                  ppTitle: parsed.ppTitle || 'Add Notes',
+                  scoutNotes: parsed.scoutNotes || { powerPlay: '', penaltyKill: '', keyPlayers: '' },
+                  showScoutNotes: parsed.showScoutNotes !== undefined ? parsed.showScoutNotes : true
+                };
+              }
+            } catch (e) {
+              console.error('Error loading coachNotes:', e);
+            }
+            return {
+              pk: '',
+              pp: '',
+              pkTitle: 'Add Notes',
+              ppTitle: 'Add Notes',
+              scoutNotes: { powerPlay: '', penaltyKill: '', keyPlayers: '' },
+              showScoutNotes: true
+            };
           });
           
           const [diagramImages, setDiagramImages] = useState(() => {
@@ -476,6 +521,32 @@
           const [showSetup, setShowSetup] = useState(false);
           const [showCareerStats, setShowCareerStats] = useState(false);
           const [showPronunciations, setShowPronunciations] = useState(false);
+
+          // Stat display toggles - persisted to localStorage
+          const [showPlusMinus, setShowPlusMinus] = useState(() => {
+            try {
+              const saved = localStorage.getItem('llc-show-plusminus');
+              return saved === null ? true : JSON.parse(saved);
+            } catch { return true; }
+          });
+          const [showFaceoffs, setShowFaceoffs] = useState(() => {
+            try {
+              const saved = localStorage.getItem('llc-show-faceoffs');
+              return saved === null ? true : JSON.parse(saved);
+            } catch { return true; }
+          });
+          const [showBlockedShots, setShowBlockedShots] = useState(() => {
+            try {
+              const saved = localStorage.getItem('llc-show-blockedshots');
+              return saved === null ? true : JSON.parse(saved);
+            } catch { return true; }
+          });
+          const [showPIM, setShowPIM] = useState(() => {
+            try {
+              const saved = localStorage.getItem('llc-show-pim');
+              return saved === null ? true : JSON.parse(saved);
+            } catch { return true; }
+          });
           const [showImport, setShowImport] = useState(false);
           const [showExport, setShowExport] = useState(false);
           const [exportData, setExportData] = useState('');
@@ -488,6 +559,13 @@
           const [selectedPlayer, setSelectedPlayer] = useState(null);
           const [opponentLogo, setOpponentLogo] = useState(null);
           const [opponentColors, setOpponentColors] = useState({ primary: '#dc2626', secondary: '#991b1b' });
+          const [oppSpecialTeamsManual, setOppSpecialTeamsManual] = useState(() => {
+            try {
+              const saved = localStorage.getItem('hockey-scout-oppSpecialTeams');
+              if (saved) return JSON.parse(saved);
+            } catch {}
+            return { shga: '', shg: '', ppg: '', pkga: '' };
+          });
           const [careerStatsImport, setCareerStatsImport] = useState(() => {
             if (SUBSCRIBER_MODE && EMBEDDED_CONFIG?.careerSeasonData) {
               return {
@@ -520,6 +598,74 @@
             'GOLD': 'bg-yellow-200 border-yellow-700'
           };
 
+          const colorHex = {
+            'GREEN': '#16a34a',
+            'RED': '#dc2626',
+            'BLUE': '#2563eb',
+            'YELLOW': '#ca8a04',
+            'WHITE': '#ffffff',
+            'BLACK': '#111111',
+            'DARK GRAY': '#4b5563',
+            'LIGHT GRAY': '#d1d5db',
+            'BURNT ORANGE': '#c2410c',
+            'DEEP PURPLE': '#7c3aed',
+            'MAROON': '#9f1239',
+            'NAVY': '#1e3a8a',
+            'GOLD': '#b45309'
+          };
+
+          // Custom color circle picker - replaces native <select> for line colors
+          const ColorPicker = ({ value, onChange }) => {
+            const [open, setOpen] = React.useState(false);
+            return (
+              <div className="no-print relative" style={{ userSelect: 'none' }}>
+                {/* Selected color circle button */}
+                <div
+                  onClick={() => setOpen(o => !o)}
+                  style={{
+                    width: '22px', height: '22px', borderRadius: '50%',
+                    backgroundColor: colorHex[value],
+                    border: value === 'WHITE' ? '2px solid #999' : '2px solid #333',
+                    cursor: 'pointer', flexShrink: 0
+                  }}
+                  title={value}
+                />
+                {/* Dropdown panel */}
+                {open && (
+                  <div
+                    style={{
+                      position: 'absolute', top: '26px', left: 0, zIndex: 200,
+                      background: 'white', border: '1px solid #ccc', borderRadius: '6px',
+                      padding: '6px', display: 'flex', flexWrap: 'wrap', gap: '4px', width: '110px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                    }}
+                  >
+                    {colorOptions.map(c => (
+                      <div
+                        key={c}
+                        onClick={() => { onChange(c); setOpen(false); }}
+                        style={{
+                          width: '22px', height: '22px', borderRadius: '50%',
+                          backgroundColor: colorHex[c],
+                          border: c === value ? '3px solid #333' : (c === 'WHITE' ? '2px solid #999' : '2px solid transparent'),
+                          cursor: 'pointer', flexShrink: 0
+                        }}
+                        title={c}
+                      />
+                    ))}
+                  </div>
+                )}
+                {/* Click-away to close */}
+                {open && (
+                  <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 199 }}
+                    onClick={() => setOpen(false)}
+                  />
+                )}
+              </div>
+            );
+          };
+
           const importSteps = [
             { key: 'myTeamHome', label: 'My Team - Legacy Home', team: 'mine' },
             { key: 'myTeamRoster', label: 'My Team - Legacy Roster', team: 'mine' },
@@ -527,7 +673,8 @@
             { key: 'oppTeamSelect', label: 'Opponent - Select Team', team: 'opponent', isTeamSelect: true },
             { key: 'oppHome', label: 'Opponent - Legacy Home', team: 'opponent' },
             { key: 'oppRoster', label: 'Opponent - Legacy Roster', team: 'opponent' },
-            { key: 'oppPlayerStats', label: 'Opponent - Legacy Player Stats', team: 'opponent' }
+            { key: 'oppPlayerStats', label: 'Opponent - Legacy Player Stats', team: 'opponent' },
+            { key: 'oppTeamStats', label: 'Opponent - Legacy Team Stats', team: 'opponent' }
           ];
 
           // Help content for different sections
@@ -597,6 +744,16 @@
                 "Copy (Ctrl+C or Command+C)",
                 "Return here and paste (Ctrl+V or Command+V)"
               ]
+            },
+            oppTeamStats: {
+              title: 'How to Import Opponent Team Stats',
+              steps: [
+                "Go to opponent team's Legacy Hockey page",
+                "Click 'Team Stats' in the navigation",
+                "Select all content (Ctrl+A or Command+A)",
+                "Copy (Ctrl+C or Command+C)",
+                "Return here and paste (Ctrl+V or Command+V)"
+              ]
             }
           };
 
@@ -653,6 +810,26 @@
               console.error('Error saving diagram images:', error);
             }
           }, [diagramImages]);
+
+          // Save stat toggle preferences to localStorage
+          useEffect(() => {
+            try { localStorage.setItem('llc-show-plusminus', JSON.stringify(showPlusMinus)); } catch {}
+          }, [showPlusMinus]);
+          useEffect(() => {
+            try { localStorage.setItem('llc-show-faceoffs', JSON.stringify(showFaceoffs)); } catch {}
+          }, [showFaceoffs]);
+          useEffect(() => {
+            try { localStorage.setItem('llc-show-blockedshots', JSON.stringify(showBlockedShots)); } catch {}
+          }, [showBlockedShots]);
+          useEffect(() => {
+            try { localStorage.setItem('llc-show-pim', JSON.stringify(showPIM)); } catch {}
+          }, [showPIM]);
+          useEffect(() => {
+            try { localStorage.setItem('hockey-scout-coachNotes', JSON.stringify(coachNotes)); } catch {}
+          }, [coachNotes]);
+          useEffect(() => {
+            try { localStorage.setItem('hockey-scout-oppSpecialTeams', JSON.stringify(oppSpecialTeamsManual)); } catch {}
+          }, [oppSpecialTeamsManual]);
 
           // Helper Functions
           
@@ -782,7 +959,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '14.7.7',
+                version: '16.0',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -855,6 +1032,7 @@
             const plusMinusCol = getColIndex(['+/-', 'plus', 'minus']);
             const fowCol = getColIndex(['fow']);
             const folCol = getColIndex(['fol']);
+            const bsCol = getColIndex(['bs', 'blocked']);
             
             const updatedRoster = existingRoster.map(player => {
               const matchingRow = data.find(row => {
@@ -878,7 +1056,8 @@
                     pim: pimCol >= 0 ? parseInt(matchingRow[pimCol]) || 0 : 0,
                     plusMinus: plusMinusCol >= 0 ? parseInt(matchingRow[plusMinusCol]) || 0 : 0,
                     fow: fowCol >= 0 ? parseInt(matchingRow[fowCol]) || 0 : 0,
-                    fol: folCol >= 0 ? parseInt(matchingRow[folCol]) || 0 : 0
+                    fol: folCol >= 0 ? parseInt(matchingRow[folCol]) || 0 : 0,
+                    bs: bsCol >= 0 ? parseInt(matchingRow[bsCol]) || 0 : 0
                   }
                 };
               }
@@ -998,7 +1177,7 @@
               console.log('📋 Total lines:', lines.length);
               
               // Find team name
-              const subscribeIdx = lines.findIndex(l => l === 'Subscribe');
+              const subscribeIdx = lines.findIndex(l => l.toUpperCase() === 'SUBSCRIBE');
               if (subscribeIdx >= 0 && subscribeIdx + 1 < lines.length) {
                 const potentialName = lines[subscribeIdx + 1];
                 // Team name should be a substantial word, not a menu item
@@ -1014,10 +1193,14 @@
                   console.log('✅ Found team name:', teamName);
                 }
               }
+              // Normalize ALL CAPS team name to title case
+              if (teamName === teamName.toUpperCase() && teamName.length > 2) {
+                teamName = teamName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+              }
               
               // If still no team name, look for it before "Home" menu item
               if (!teamName) {
-                const homeIdx = lines.findIndex(l => l === 'Home');
+                const homeIdx = lines.findIndex(l => l.toUpperCase() === 'HOME');
                 if (homeIdx > 0) {
                   const potentialName = lines[homeIdx - 1];
                   if (potentialName && potentialName.length > 2 && !potentialName.includes('©') &&
@@ -1030,15 +1213,15 @@
               }
               
               // Find nickname
-              const nicknameIdx = lines.findIndex(l => l.startsWith('Nickname:'));
+              const nicknameIdx = lines.findIndex(l => l.toUpperCase().startsWith('NICKNAME:'));
               if (nicknameIdx >= 0) {
-                nickname = lines[nicknameIdx].split(':')[1]?.trim() || '';
+                nickname = lines[nicknameIdx].split(':').slice(1).join(':')?.trim() || '';
                 console.log('✅ Found nickname:', nickname);
               }
               
               // Find Home Arena (for My Team Setup)
               let homeArena = '';
-              const homeArenaIdx = lines.findIndex(l => l.startsWith('Home Arena:'));
+              const homeArenaIdx = lines.findIndex(l => l.toUpperCase().startsWith('HOME ARENA:'));
               if (homeArenaIdx >= 0) {
                 homeArena = lines[homeArenaIdx].split('Home Arena:')[1]?.trim() || '';
                 console.log('✅ Found Home Arena:', homeArena);
@@ -1046,7 +1229,7 @@
               
               // Find team record
               for (let i = 0; i < lines.length; i++) {
-                if (lines[i].includes('Team Record') || lines[i] === 'W L T') {
+                if (lines[i].toUpperCase().includes('TEAM RECORD') || lines[i].replace(/\s+/g,'') === 'WLT') {
                   for (let j = i + 1; j < i + 5 && j < lines.length; j++) {
                     const parts = lines[j]?.split(/\s+/);
                     if (parts && parts.length >= 3 && /^\d+$/.test(parts[0]) && /^\d+$/.test(parts[1]) && /^\d+$/.test(parts[2])) {
@@ -1060,7 +1243,7 @@
               }
               
               // Find head coach
-              const coachIdx = lines.findIndex(l => l.includes('Head Coach'));
+              const coachIdx = lines.findIndex(l => l.toUpperCase().includes('HEAD COACH'));
               if (coachIdx >= 0) {
                 let coachNameFound = false;
                 for (let i = coachIdx + 1; i < coachIdx + 10 && i < lines.length; i++) {
@@ -1092,7 +1275,7 @@
                     headCoach.careerRecord = { w: 0, l: 0, t: 0 };
                     console.log('✅ Found first-year head coach:', headCoach.name);
                     break;
-                  } else if (!coachNameFound && line && !line.includes('Head Coach') && line.length > 2 && !line.includes('Phone:')) {
+                  } else if (!coachNameFound && line && !line.toUpperCase().includes('HEAD COACH') && line.length > 2 && !line.includes('Phone:')) {
                     headCoach.name = line;
                     coachNameFound = true;
                   }
@@ -1135,21 +1318,26 @@
               }
               
               // Parse stats
-              let stats = { ppPct: 0, pkPct: 0, gpg: 0, gapg: 0 };
+              let stats = { ppPct: 0, pkPct: 0, gpg: 0, gapg: 0, ppGoals: 0, ppOpp: 0, pkOpp: 0, pkGoalsAllowed: 0 };
               for (let i = 0; i < lines.length; i++) {
                 const parts = lines[i].split(/\s+/);
                 if (parts.length >= 10 && parts[0].match(/\d+/)) {
                   stats.gpg = parseFloat(parts[3]) || 0;
                   stats.gapg = parseFloat(parts[4]) || 0;
+                  stats.ppOpp = parseInt(parts[5]) || 0;
                   stats.ppPct = parseFloat(parts[6]) || 0;
+                  stats.ppGoals = parseInt(parts[7]) || 0;
+                  stats.pkOpp = parseInt(parts[8]) || 0;
                   stats.pkPct = parseFloat(parts[9]) || 0;
+                  // PK goals allowed = PK opp × (1 - PK%/100), rounded
+                  stats.pkGoalsAllowed = stats.pkOpp > 0 ? Math.round(stats.pkOpp * (1 - stats.pkPct / 100)) : 0;
                   break;
                 }
               }
               
               // Parse Last Game
               let lastGame = null;
-              const lastGameIdx = lines.findIndex(l => l === 'Last Game');
+              const lastGameIdx = lines.findIndex(l => l.toUpperCase() === 'LAST GAME');
               if (lastGameIdx >= 0) {
                 const scoreLine = lines[lastGameIdx + 1];
                 const scoreMatch = scoreLine?.match(/(\d+)\s*-\s*(\d+)/);
@@ -1168,7 +1356,7 @@
                   let isOurTeamFirst = false;
                   
                   // Find the "Team" header line which indicates the box score table
-                  const teamHeaderIdx = lines.findIndex((l, idx) => idx > lastGameIdx && l.includes('Team') && (l.includes('1') || l.includes('T')));
+                  const teamHeaderIdx = lines.findIndex((l, idx) => idx > lastGameIdx && l.toUpperCase().includes('TEAM') && (l.includes('1') || l.includes('T')));
                   
                   if (teamHeaderIdx > 0) {
                     // Look at the next few lines for team names with scores
@@ -1239,16 +1427,20 @@
                   const wasHome = isOurTeamOnRight;
                   
                   let date = '';
+                  let lastGameLocation = '';
                   for (let i = lastGameIdx + 3; i < Math.min(lines.length, lastGameIdx + 25); i++) {
                     if (lines[i].includes('@') && lines[i].includes('202')) {
-                      // Just get the date/time part, not the venue
                       const fullLine = lines[i];
-                      // Extract just "Sat Nov 22, 2025 @ 2:30p" part
                       const dateMatch = fullLine.match(/^([A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2},?\s+\d{4}\s*@\s*\d{1,2}:\d{2}[ap]?m?)/i);
                       if (dateMatch) {
                         date = dateMatch[1];
                         // Normalize time format: 7:00p -> 7:00pm
-                        date = date.replace(/(\d:\d{2})([ap])(?!m)/i, '$1$2m');
+                        date = date.replace(/(\d:\d{2})([ap])(?!m)/i, (_, t, ap) => t + ap.toLowerCase() + 'm').replace(/(\d:\d{2}[ap]m)/i, m => m.toLowerCase());
+                        // Capture everything after the time as location (tournament name, arena, city)
+                        const afterTime = fullLine.substring(dateMatch[0].length).trim();
+                        if (afterTime) {
+                          lastGameLocation = afterTime.replace(/^\|?\s*/, '').trim();
+                        }
                       } else {
                         // Fallback - just take up to the time
                         const parts = fullLine.split(/\s+(?=[A-Z][a-z]+\s+[A-Z])/);
@@ -1264,7 +1456,8 @@
                     oppScore,
                     result: ourScore > oppScore ? 'W' : ourScore < oppScore ? 'L' : 'T',
                     wasHome,
-                    date
+                    date,
+                    location: lastGameLocation
                   };
                   
                   console.log('🏒 Last Game parsed:', { ourTeamInTable, opponentInTable, isOurTeamFirst, leftScore, rightScore, ourScore, oppScore, result: lastGame.result });
@@ -1294,15 +1487,19 @@
                       const parts = line.split('@');
                       date = parts[0]?.trim() || '';
                       // Normalize time format: 7:00p -> 7:00pm
-                      time = (parts[1]?.trim() || '').replace(/(\d:\d{2})([ap])(?!m)/i, '$1$2m');
+                      time = (parts[1]?.trim() || '').replace(/(\d:\d{2})([ap])(?!m)/i, (_, t, ap) => t + ap.toLowerCase() + 'm').replace(/(\d:\d{2}[ap]m)/i, m => m.toLowerCase());
                     }
                     
-                    // Location line - typically follows the date/time and contains arena name
-                    if (line && !line.includes('@') && !line.includes('-') && !line.match(/^\d/) && 
-                        line !== 'Scheduled' && line.length > 5 && 
+                    // Location line — arena, neutral site, or tournament name
+                    if (line && !line.includes('@') && !line.match(/^\d/) && 
+                        line !== 'Scheduled' && line.toUpperCase() !== 'SCHEDULED' && line.length > 5 && 
                         (line.includes('Arena') || line.includes('Center') || line.includes('Ice') || 
                          line.includes('Rink') || line.includes('Complex') || line.includes(',') ||
-                         line.includes('Coliseum') || line.includes('Civic') || line.includes('Pavilion'))) {
+                         line.includes('Coliseum') || line.includes('Civic') || line.includes('Pavilion') ||
+                         line.includes('Tournament') || line.includes('State') || line.includes('Section') ||
+                         line.includes('|') || line.includes('Casino') || line.includes('Classic') ||
+                         line.toUpperCase().includes('ARENA') || line.toUpperCase().includes('CENTER') ||
+                         line.toUpperCase().includes('SECTION') || line.toUpperCase().includes('TOURNAMENT'))) {
                       location = line;
                     }
                     
@@ -1368,7 +1565,7 @@
                 };
               } else {
                 // Fallback to old parsing method
-                const nextGameIdx = lines.findIndex(l => l === 'Next Game');
+                const nextGameIdx = lines.findIndex(l => l.toUpperCase() === 'NEXT GAME');
                 if (nextGameIdx >= 0) {
                   let opponent = '';
                   let isHome = false;
@@ -1377,7 +1574,7 @@
                   let location = '';
                   
                   for (let i = nextGameIdx + 1; i < Math.min(lines.length, nextGameIdx + 10); i++) {
-                    if (lines[i] === 'at') {
+                    if (lines[i].toUpperCase() === 'AT') {
                       isHome = false;
                       for (let j = i + 1; j < Math.min(lines.length, i + 5); j++) {
                         if (lines[j] && lines[j].length > 2 && lines[j] !== teamName && !lines[j].includes('@')) {
@@ -1386,7 +1583,7 @@
                         }
                       }
                       break;
-                    } else if (lines[i] === 'vs') {
+                    } else if (lines[i].toUpperCase() === 'VS') {
                       isHome = true;
                       for (let j = i + 1; j < Math.min(lines.length, i + 5); j++) {
                         if (lines[j] && lines[j].length > 2 && lines[j] !== teamName && !lines[j].includes('@')) {
@@ -1404,11 +1601,18 @@
                       date = parts[0]?.trim() || '';
                       time = parts[1]?.trim() || '';
                     }
-                    // Look for location
-                    if (lines[i] && !lines[i].includes('@') && !lines[i].includes('-') && 
-                        (lines[i].includes('Arena') || lines[i].includes('Center') || lines[i].includes('Ice') || 
-                         lines[i].includes('Rink') || lines[i].includes(',') || lines[i].includes('Complex'))) {
-                      location = lines[i];
+                    // Look for location — arena, neutral site, or tournament name
+                    const li = lines[i];
+                    if (li && !li.includes('@') && !li.match(/^\d/) &&
+                        li !== 'Scheduled' && li.length > 5 &&
+                        (li.includes('Arena') || li.includes('Center') || li.includes('Ice') ||
+                         li.includes('Rink') || li.includes('Complex') || li.includes(',') ||
+                         li.includes('Coliseum') || li.includes('Civic') || li.includes('Pavilion') ||
+                         li.includes('Tournament') || li.includes('State') || li.includes('Section') ||
+                         li.includes('|') || li.includes('Casino') || li.includes('Classic') ||
+                         li.toUpperCase().includes('ARENA') || li.toUpperCase().includes('CENTER') ||
+                         li.toUpperCase().includes('SECTION') || li.toUpperCase().includes('TOURNAMENT'))) {
+                      location = li;
                     }
                   }
                   
@@ -1431,7 +1635,7 @@
               return { 
                 teamName: '', nickname: '', record: { w: 0, l: 0, t: 0 }, 
                 section: '', conference: '', headCoach: { name: '', careerRecord: { w: 0, l: 0, t: 0 }, seasonRecord: { w: 0, l: 0, t: 0 } }, 
-                assistantCoaches: [], stats: { ppPct: 0, pkPct: 0, gpg: 0, gapg: 0 }, lastGame: null, nextGame: null, currentGame: null 
+                assistantCoaches: [], stats: { ppPct: 0, pkPct: 0, gpg: 0, gapg: 0, ppGoals: 0, ppOpp: 0, pkOpp: 0, pkGoalsAllowed: 0 }, lastGame: null, nextGame: null, currentGame: null 
               };
             }
           };
@@ -1518,10 +1722,14 @@
                     }
                     
                     let dobYear = '';
-                    const lastField = fields[fields.length - 1];
-                    const yearMatch = lastField.match(/\b(19|20)\d{2}\b/);
-                    if (yearMatch) {
-                      dobYear = yearMatch[0];
+                    // Search ALL fields for birth year - not just last field
+                    // This handles cases where college commitment text follows the DOB
+                    for (let k = 4; k < fields.length; k++) {
+                      const yearMatch = fields[k].match(/\b(19|20)\d{2}\b/);
+                      if (yearMatch) {
+                        dobYear = yearMatch[0];
+                        break;
+                      }
                     }
                     
                     // Use first 3 chars to distinguish siblings (e.g., Jonny vs Joe McCabe)
@@ -1546,7 +1754,7 @@
                       dobYear: dobYear,
                       handed: handed,
                       shoots: shoots,
-                      stats: { gp: 0, g: 0, a: 0, pts: 0, ppg: 0, ppa: 0, sh: 0, sha: 0, pim: 0, plusMinus: 0, fow: 0, fol: 0 },
+                      stats: { gp: 0, g: 0, a: 0, pts: 0, ppg: 0, ppa: 0, sh: 0, sha: 0, pim: 0, plusMinus: 0, fow: 0, fol: 0, bs: 0 },
                       goalieStats: normalizedPosition === 'G' ? { gp: 0, min: '0:00', w: 0, l: 0, t: 0, sog: 0, ga: 0, sv: 0, gaa: 0, svp: '.000', so: 0 } : null,
                       baseCareerStats: existingPlayer?.baseCareerStats || undefined,
                       baseCareerGoalieStats: existingPlayer?.baseCareerGoalieStats || undefined,
@@ -1648,7 +1856,7 @@
                       dobYear: dobYear,
                       handed: handed,
                       shoots: shoots,
-                      stats: { gp: 0, g: 0, a: 0, pts: 0, ppg: 0, ppa: 0, sh: 0, sha: 0, pim: 0, plusMinus: 0, fow: 0, fol: 0 },
+                      stats: { gp: 0, g: 0, a: 0, pts: 0, ppg: 0, ppa: 0, sh: 0, sha: 0, pim: 0, plusMinus: 0, fow: 0, fol: 0, bs: 0 },
                       goalieStats: normalizedPosition === 'G' ? { gp: 0, min: '0:00', w: 0, l: 0, t: 0, sog: 0, ga: 0, sv: 0, gaa: 0, svp: '.000', so: 0 } : null,
                       baseCareerStats: existingPlayer?.baseCareerStats || undefined,
                       baseCareerGoalieStats: existingPlayer?.baseCareerGoalieStats || undefined,
@@ -1678,12 +1886,12 @@
               for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
                 
-                if (line === 'Skater') {
+                if (line.toUpperCase() === 'SKATER') {
                   inSkaterSection = true;
                   inGoalieSection = false;
                   continue;
                 }
-                if (line === 'Goalie') {
+                if (line.toUpperCase() === 'GOALIE') {
                   inSkaterSection = false;
                   inGoalieSection = true;
                   continue;
@@ -1756,7 +1964,7 @@
                     
                     player.stats = currentStats;
                     
-                    const baseCareer = player.baseCareerStats || { gp: 0, g: 0, a: 0, pts: 0, pim: 0, plusMinus: 0, fow: 0, fol: 0 };
+                    const baseCareer = player.baseCareerStats || { gp: 0, g: 0, a: 0, pts: 0, pim: 0, plusMinus: 0, fow: 0, fol: 0, bs: 0 };
                     const totalFOW = (baseCareer.fow || 0) + currentStats.fow;
                     const totalFOL = (baseCareer.fol || 0) + currentStats.fol;
                     const careerFaceoffPct = (totalFOW + totalFOL > 0) ? ((totalFOW / (totalFOW + totalFOL)) * 100).toFixed(1) : '0.0';
@@ -1895,12 +2103,12 @@
               for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
                 
-                if (line === 'Skater') {
+                if (line.toUpperCase() === 'SKATER') {
                   inSkaterSection = true;
                   inGoalieSection = false;
                   continue;
                 }
-                if (line === 'Goalie') {
+                if (line.toUpperCase() === 'GOALIE') {
                   inSkaterSection = false;
                   inGoalieSection = true;
                   continue;
@@ -1945,8 +2153,9 @@
                     const seasonPlusMinus = parseInt(fields[19]) || 0;
                     const seasonFOW = parseInt(fields[14]) || 0;
                     const seasonFOL = parseInt(fields[15]) || 0;
+                    const seasonBS = parseInt(fields[16]) || 0;
                     
-                    const existing = player.baseCareerStats || { gp: 0, g: 0, a: 0, pts: 0, plusMinus: 0, fow: 0, fol: 0 };
+                    const existing = player.baseCareerStats || { gp: 0, g: 0, a: 0, pts: 0, plusMinus: 0, fow: 0, fol: 0, bs: 0 };
                     
                     player.baseCareerStats = {
                       gp: existing.gp + seasonGP,
@@ -1955,7 +2164,8 @@
                       pts: existing.pts + seasonPts,
                       plusMinus: existing.plusMinus + seasonPlusMinus,
                       fow: existing.fow + seasonFOW,
-                      fol: existing.fol + seasonFOL
+                      fol: existing.fol + seasonFOL,
+                      bs: (existing.bs || 0) + seasonBS
                     };
                     
                     console.log(`✓ Base career for ${name}:`, player.baseCareerStats);
@@ -2029,7 +2239,7 @@
               console.log('📊 ========== PARSING TEAM STATS ==========');
               const lines = text.split('\n').map(l => l.trim()).filter(l => l);
               
-              let stats = { ppPct: 0, pkPct: 0, gpg: 0, gapg: 0 };
+              let stats = { ppPct: 0, pkPct: 0, gpg: 0, gapg: 0, ppGoals: 0, ppOpp: 0, pkOpp: 0, pkGoalsAllowed: 0 };
               
               let headerIdx = -1;
               for (let i = 0; i < lines.length; i++) {
@@ -2059,11 +2269,138 @@
               return stats;
             } catch (error) {
               console.error('Error parsing team stats:', error);
-              return { ppPct: 0, pkPct: 0, gpg: 0, gapg: 0 };
+              return { ppPct: 0, pkPct: 0, gpg: 0, gapg: 0, ppGoals: 0, ppOpp: 0, pkOpp: 0, pkGoalsAllowed: 0 };
             }
           };
 
-          const handleLogoPaste = async (isSetup, isMyTeam) => {
+          // Parse Opponent Team Stats page — extracts PP/PK goals, SHG, SHGA
+          const parseOpponentTeamStats = (text) => {
+            try {
+              console.log('📊 ========== PARSING OPPONENT TEAM STATS ==========');
+              const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+              let result = { ppGoals: 0, ppOpp: 0, pkGoalsAllowed: 0, pkOpp: 0, shg: 0, shga: 0 };
+
+              // Helper: extract SH from concatenated afterSogPct block
+              // PPG and PPA are always exactly 2 digits, so SH starts at position 4
+              const extractSHFromAfterSogPct = (block) => {
+                if (!block || block.length < 5) return 0;
+                const sh2 = parseInt(block.substring(4, 6));
+                const sh1 = parseInt(block.substring(4, 5));
+                return sh2 > 15 ? sh1 : sh2;
+              };
+              const extractSHFromBlock = (block) => {
+                const dotPos = block.indexOf('.');
+                if (dotPos < 0) return 0;
+                return extractSHFromAfterSogPct(block.substring(dotPos + 2));
+              };
+
+              // ── SKATER SECTION ──────────────────────────────────────────
+              // Browser tab format: each field on its own line after splitting
+              // Row: [teamName, GP, G, A, PTS, SOG, SOG%, PPG, PPA, SH, SHA, ...]
+              // Indices:          [0][1][2][3][4]  [5]  [6] [7] [8] [9][10]
+              let skaterFound = false;
+              let inSkaterSection = false;
+              let teamSkaterParts = null;
+              let oppSkaterParts = null;
+
+              for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.toUpperCase() === 'SKATER') { inSkaterSection = true; continue; }
+                if (line.toUpperCase() === 'GOALIE' || line.toUpperCase() === 'TEAM') inSkaterSection = false;
+
+                if (inSkaterSection) {
+                  const parts = line.split('\t');
+                  if (parts.length >= 10 && /^\d+$/.test(parts[1])) {
+                    if (!teamSkaterParts) {
+                      teamSkaterParts = parts;
+                      console.log('📊 Team skater row found, SH at index 9:', parts[9]);
+                    } else if (!oppSkaterParts) {
+                      oppSkaterParts = parts;
+                      console.log('📊 Opp skater row found, SH at index 9:', parts[9]);
+                      skaterFound = true;
+                      break;
+                    }
+                  }
+                }
+              }
+
+              if (skaterFound) {
+                result.shg  = parseInt(teamSkaterParts[9]) || 0;
+                result.shga = parseInt(oppSkaterParts[9])  || 0;
+                console.log('✅ SHG (tab):', result.shg, '| SHGA (tab):', result.shga);
+              } else {
+                // Fallback: concatenated single-line format
+                for (let i = 0; i < lines.length; i++) {
+                  const w = lines.slice(i, Math.min(i + 12, lines.length)).join('');
+                  if (w.includes('PPG') && w.includes('FOW') && w.includes('Opponent')) {
+                    const oppIdx = w.indexOf('Opponent');
+                    const bsIdx  = w.lastIndexOf('BS');
+                    const from   = bsIdx >= 0 ? bsIdx + 2 : 0;
+                    const fd     = w.substring(from).search(/\d/);
+                    if (fd >= 0) {
+                      result.shg  = extractSHFromBlock(w.substring(from + fd, oppIdx));
+                      const os    = w.substring(oppIdx + 8);
+                      const fdo   = os.search(/\d/);
+                      if (fdo >= 0) result.shga = extractSHFromBlock(os.substring(fdo));
+                    }
+                    console.log('✅ SHG (concat):', result.shg, '| SHGA (concat):', result.shga);
+                    break;
+                  }
+                }
+              }
+
+              // ── TEAM SECTION ─────────────────────────────────────────────
+              // Browser tab format:
+              // Row: [teamName, GP, GPG, GAPG, PP, PP%, PK, PPGA, PK%]
+              // Indices:        [0][1] [2]  [3] [4]  [5][6]  [7]  [8]
+              let teamSectionFound = false;
+              let inTeamSection = false;
+
+              for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.toUpperCase() === 'TEAM') { inTeamSection = true; continue; }
+                if (line.toUpperCase() === 'PRINTABLE VERSION' || line.toUpperCase() === 'PREVIOUS') inTeamSection = false;
+
+                if (inTeamSection) {
+                  const parts = line.split('\t');
+                  if (parts.length >= 8 && /^\d+$/.test(parts[1]) && parts[2]?.includes('.')) {
+                    result.ppOpp          = parseInt(parts[4])   || 0;
+                    result.pkOpp          = parseInt(parts[6])   || 0;
+                    result.pkGoalsAllowed = parseInt(parts[7])   || 0;
+                    result.ppGoals        = Math.round(result.ppOpp * (parseFloat(parts[5]) || 0) / 100);
+                    console.log('✅ PP/PK (tab):', { ppGoals: result.ppGoals, ppOpp: result.ppOpp, pkGoalsAllowed: result.pkGoalsAllowed, pkOpp: result.pkOpp });
+                    teamSectionFound = true;
+                    break;
+                  }
+                }
+              }
+
+              if (!teamSectionFound) {
+                // Fallback: concatenated format
+                for (let i = 0; i < lines.length; i++) {
+                  const w = lines.slice(i, Math.min(i + 8, lines.length)).join('');
+                  if (w.includes('GPG') && w.includes('GAPG') && (w.includes('PP%') || w.includes('PP %')) && (w.includes('PK%') || w.includes('PK %')) && w.search(/\d+\.\d{2}/) >= 0) {
+                    const m = w.match(/[A-Za-z\/\s]+?(\d+)(\d+\.\d{2})(\d+\.\d{2})(\d{2})(\d{2}\.\d)(\d{2})(\d{2})(\d+\.\d)/);
+                    if (m) {
+                      result.ppOpp          = parseInt(m[4])   || 0;
+                      result.pkOpp          = parseInt(m[6])   || 0;
+                      result.pkGoalsAllowed = parseInt(m[7])   || 0;
+                      result.ppGoals        = Math.round(result.ppOpp * (parseFloat(m[5]) || 0) / 100);
+                      console.log('✅ PP/PK (concat):', result);
+                    }
+                    break;
+                  }
+                }
+              }
+
+              return result;
+            } catch (error) {
+              console.error('Error parsing opponent team stats:', error);
+              return { ppGoals: 0, ppOpp: 0, pkGoalsAllowed: 0, pkOpp: 0, shg: 0, shga: 0 };
+            }
+          };
+
+                    const handleLogoPaste = async (isSetup, isMyTeam) => {
             try {
               const clipboardItems = await navigator.clipboard.read();
               for (const item of clipboardItems) {
@@ -2171,6 +2508,16 @@
               } else if (importStep === 'oppPlayerStats') {
                 const updatedRoster = parsePlayerStats(text, opponentData.roster);
                 setOpponentData(prev => ({ ...prev, roster: updatedRoster }));
+              } else if (importStep === 'oppTeamStats') {
+                const parsed = parseOpponentTeamStats(text);
+                // Update oppSpecialTeamsManual with parsed values
+                setOppSpecialTeamsManual({
+                  ppg: parsed.ppOpp > 0 ? `${parsed.ppGoals}/${parsed.ppOpp}` : '',
+                  pkga: parsed.pkOpp > 0 ? `${parsed.pkGoalsAllowed}/${parsed.pkOpp}` : '',
+                  shg: parsed.shg > 0 ? `${parsed.shg}` : '',
+                  shga: parsed.shga > 0 ? `${parsed.shga}` : ''
+                });
+                console.log('✅ Opponent team stats imported:', parsed);
               }
               
               setImportText('');
@@ -2225,6 +2572,14 @@
                 } else if (importStep === 'oppPlayerStats') {
                   const updatedRoster = parsePlayerStats(importText, opponentData.roster);
                   setOpponentData(prev => ({ ...prev, roster: updatedRoster }));
+                } else if (importStep === 'oppTeamStats') {
+                  const parsed = parseOpponentTeamStats(importText);
+                  setOppSpecialTeamsManual({
+                    ppg: parsed.ppOpp > 0 ? `${parsed.ppGoals}/${parsed.ppOpp}` : '',
+                    pkga: parsed.pkOpp > 0 ? `${parsed.pkGoalsAllowed}/${parsed.pkOpp}` : '',
+                    shg: parsed.shg > 0 ? `${parsed.shg}` : '',
+                    shga: parsed.shga > 0 ? `${parsed.shga}` : ''
+                  });
                 }
               } catch (error) {
                 console.error('Error saving data on back:', error);
@@ -2284,6 +2639,14 @@
                 } else if (importStep === 'oppPlayerStats') {
                   const updatedRoster = parsePlayerStats(importText, opponentData.roster);
                   setOpponentData(prev => ({ ...prev, roster: updatedRoster }));
+                } else if (importStep === 'oppTeamStats') {
+                  const parsed = parseOpponentTeamStats(importText);
+                  setOppSpecialTeamsManual({
+                    ppg: parsed.ppOpp > 0 ? `${parsed.ppGoals}/${parsed.ppOpp}` : '',
+                    pkga: parsed.pkOpp > 0 ? `${parsed.pkGoalsAllowed}/${parsed.pkOpp}` : '',
+                    shg: parsed.shg > 0 ? `${parsed.shg}` : '',
+                    shga: parsed.shga > 0 ? `${parsed.shga}` : ''
+                  });
                 }
               } catch (error) {
                 console.error('Error saving data on close:', error);
@@ -2366,12 +2729,12 @@
                 for (let i = 0; i < lines.length; i++) {
                   const line = lines[i];
                   
-                  if (line === 'Skater') {
+                  if (line.toUpperCase() === 'SKATER') {
                     inSkaterSection = true;
                     inGoalieSection = false;
                     continue;
                   }
-                  if (line === 'Goalie') {
+                  if (line.toUpperCase() === 'GOALIE') {
                     inSkaterSection = false;
                     inGoalieSection = true;
                     continue;
@@ -2403,6 +2766,7 @@
                     const seasonPlusMinus = parseInt(fields[19]) || 0;
                     const seasonFOW = parseInt(fields[14]) || 0;
                     const seasonFOL = parseInt(fields[15]) || 0;
+                    const seasonBS = parseInt(fields[16]) || 0;
                     
                     if (careerData[key]?.type === 'goalie') {
                       console.log(`⚠️ Skipping skater stats for ${name} - already saved as goalie`);
@@ -2412,7 +2776,7 @@
                     if (!careerData[key]) {
                       careerData[key] = {
                         type: 'skater',
-                        data: { gp: 0, g: 0, a: 0, pts: 0, pim: 0, plusMinus: 0, fow: 0, fol: 0 }
+                        data: { gp: 0, g: 0, a: 0, pts: 0, pim: 0, plusMinus: 0, fow: 0, fol: 0, bs: 0 }
                       };
                     }
                     
@@ -2424,6 +2788,7 @@
                     careerData[key].data.plusMinus += seasonPlusMinus;
                     careerData[key].data.fow += seasonFOW;
                     careerData[key].data.fol += seasonFOL;
+                    careerData[key].data.bs = (careerData[key].data.bs || 0) + seasonBS;
                     
                     console.log(`✓ Added skater career for ${name} (${key}):`, careerData[key].data);
                   } else if (inGoalieSection && fields.length >= 10) {
@@ -2510,7 +2875,7 @@
             
             const pronunciation = myTeamSetup.pronunciations[player.lastName] || '';
             
-            const stats = player.stats || { gp: 0, g: 0, a: 0, pts: 0, pim: 0, plusMinus: 0, fow: 0, fol: 0 };
+            const stats = player.stats || { gp: 0, g: 0, a: 0, pts: 0, pim: 0, plusMinus: 0, fow: 0, fol: 0, bs: 0 };
             const careerStats = player.careerStats || { gp: 0, g: 0, a: 0, pts: 0, plusMinus: 0, faceoffPct: '0.0', pim: 0 };
             const goalieStats = player.goalieStats || { gp: 0, min: '0:00', w: 0, l: 0, t: 0, ga: 0, sv: 0, gaa: 0, svp: '.000', so: 0, pim: 0 };
             const careerGoalieStats = player.careerGoalieStats || { gp: 0, min: '0:00', w: 0, l: 0, t: 0, ga: 0, sv: 0, gaa: 0, svp: '.000', so: 0, pim: 0 };
@@ -2530,6 +2895,14 @@
               if (!value || value === 0) return '+0';
               return value > 0 ? `+${value}` : `${value}`;
             };
+
+            const formatSvp = (svp) => {
+              // Always show 3 significant digits: .904, 1.00, .900
+              const num = parseFloat(svp);
+              if (isNaN(num)) return '.000';
+              if (num >= 1) return num.toFixed(2);       // 1.00
+              return num.toFixed(3).replace(/^0/, '');   // .904
+            };
             
             const gradeText = getGradeLabel(player.grade);
             const gradeDisplay = player.dobYear ? `${gradeText} - ${player.dobYear}` : gradeText;
@@ -2539,6 +2912,12 @@
               : player.handed === 'L' ? 'Left' : player.handed === 'R' ? 'Right' : '';
             
             const isSelected = selectedPlayer?.player.id === player.id;
+            
+            // Post-HS info (junior/college logos) - keyed by player id
+            const postHSInfo = (myTeamSetup.postHSInfo && myTeamSetup.postHSInfo[player.id]) || {};
+            const juniorLogo = postHSInfo.juniorLogo || null;
+            const collegeLogo = postHSInfo.collegeLogo || null;
+            const hasLogos = !!(juniorLogo || collegeLogo);
             
             const fontScale = isPreview ? 0.3125 : 1;
             const statFontSize = `${8 * fontScale}pt`;
@@ -2560,9 +2939,11 @@
                   iterations++;
                 }
               };
-              
+
               if (numberRef.current) {
-                const maxNumberSize = isPreview ? 32.8125 : 105;
+                const maxNumberSize = hasLogos
+                  ? (isPreview ? 20 : 65)
+                  : (isPreview ? 32.8125 : 105);
                 const minNumberSize = isPreview ? 12.5 : 40;
                 resizeText(numberRef.current, maxNumberSize, minNumberSize);
               }
@@ -2575,11 +2956,11 @@
               }
               
               if (pronunciationRef.current && pronunciation) {
-                const maxPronunciationSize = isPreview ? 12.5 * 0.3125 : 12.5;
-                const minPronunciationSize = isPreview ? 2.5 : 7.5;
+                const maxPronunciationSize = isPreview ? 10 * 0.3125 : 10;
+                const minPronunciationSize = isPreview ? 2.5 : 6;
                 resizeText(pronunciationRef.current, maxPronunciationSize, minPronunciationSize);
               }
-            }, [player.number, player.name, pronunciation, isGoalie, isPreview]);
+            }, [player.number, player.name, pronunciation, isGoalie, isPreview, hasLogos]);
             
             return (
               <div
@@ -2604,26 +2985,51 @@
                   alignItems: 'center',
                   justifyContent: 'flex-start',
                   borderRight: '2px solid #333',
-                  paddingRight: '2px'
+                  paddingRight: '2px',
+                  overflow: 'hidden'
                 }}>
-                  <div 
+                  {/* Number — normal size, original resize behavior */}
+                  <div
                     ref={numberRef}
-                    style={{ 
+                    style={{
                       fontWeight: 'bold',
                       lineHeight: '0.9',
                       textAlign: 'center',
                       width: '100%',
                       overflow: 'hidden',
-                      marginBottom: '2px'
+                      marginBottom: '0px'
                     }}
                   >
                     {player.number}
                   </div>
-                  
+
+                  {/* Logos — zero spacing above and below, between number and pronunciation */}
+                  {hasLogos && (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '2px',
+                      width: '100%',
+                      flexShrink: 0,
+                      margin: '0px',
+                      padding: '0px'
+                    }}>
+                      {juniorLogo && (
+                        <img src={juniorLogo} alt="Jr" style={{ height: isPreview ? '8px' : '18px', width: isPreview ? '8px' : '18px', objectFit: 'contain', display: 'block', background: 'white' }} />
+                      )}
+                      {collegeLogo && (
+                        <img src={collegeLogo} alt="Col" style={{ height: isPreview ? '8px' : '18px', width: isPreview ? '8px' : '18px', objectFit: 'contain', display: 'block', background: 'white' }} />
+                      )}
+                    </div>
+                  )}
+
+                  {/* Pronunciation — full width, same size as no-logo cards */}
                   {pronunciation && (
-                    <div 
+                    <div
                       ref={pronunciationRef}
-                      style={{ 
+                      style={{
                         fontSize: pronunciationFontSize,
                         fontStyle: 'italic',
                         fontWeight: 'normal',
@@ -2632,7 +3038,8 @@
                         marginTop: '0px',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
-                        width: '100%'
+                        width: '100%',
+                        flexShrink: 0
                       }}>
                       "{pronunciation}"
                     </div>
@@ -2685,6 +3092,7 @@
                   
                   {!isGoalie ? (
                     <>
+                      {/* Season Row 1: GP, +/-, Pts */}
                       <div style={{ 
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -2695,9 +3103,11 @@
                         overflow: 'hidden'
                       }}>
                         <span>25-26: GP {stats.gp}</span>
+                        {showPlusMinus && <span>+/- {formatPlusMinus(stats.plusMinus)}</span>}
                         <span>Pts. {stats.g}-{stats.a}--{stats.pts}</span>
                       </div>
                       
+                      {/* Season Row 2: PIM, BS, Faceoff */}
                       <div style={{ 
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -2707,11 +3117,12 @@
                         whiteSpace: 'nowrap',
                         overflow: 'hidden'
                       }}>
-                        <span>PIM {stats.pim}</span>
-                        <span>+/- {formatPlusMinus(stats.plusMinus)}</span>
-                        <span>Faceoff {faceoffPct}%</span>
+                        {showPIM && <span>PIM {stats.pim}</span>}
+                        {showBlockedShots && <span>BS {stats.bs || 0}</span>}
+                        {showFaceoffs && <span>Faceoff {faceoffPct}%</span>}
                       </div>
                       
+                      {/* Career Row 1: GP, +/-, Pts */}
                       <div style={{ 
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -2722,9 +3133,11 @@
                         overflow: 'hidden'
                       }}>
                         <span>Career: GP {careerStats.gp}</span>
+                        {showPlusMinus && <span>+/- {formatPlusMinus(careerStats.plusMinus)}</span>}
                         <span>Pts. {careerStats.g}-{careerStats.a}--{careerStats.pts}</span>
                       </div>
                       
+                      {/* Career Row 2: PIM, BS, Faceoff */}
                       <div style={{ 
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -2734,9 +3147,9 @@
                         whiteSpace: 'nowrap',
                         overflow: 'hidden'
                       }}>
-                        <span>PIM {careerStats.pim || 0}</span>
-                        <span>+/- {formatPlusMinus(careerStats.plusMinus)}</span>
-                        <span>Faceoff {careerStats.faceoffPct}%</span>
+                        {showPIM && <span>PIM {careerStats.pim || 0}</span>}
+                        {showBlockedShots && <span>BS {careerStats.bs || 0}</span>}
+                        {showFaceoffs && <span>Faceoff {careerStats.faceoffPct}%</span>}
                       </div>
                     </>
                   ) : (
@@ -2763,9 +3176,9 @@
                         whiteSpace: 'nowrap',
                         overflow: 'hidden'
                       }}>
-                        <span>PIM {goalieStats.pim || 0}</span>
-                        <span>Rec. {goalieStats.w}-{goalieStats.l}-{goalieStats.t} ({goalieStats.so})</span>
-                        <span>S% {goalieStats.svp}</span>
+                        {showPIM && <span>PIM {goalieStats.pim || 0}</span>}
+                        <span>Rec. {goalieStats.w}-{goalieStats.l}-{goalieStats.t} (SO {goalieStats.so})</span>
+                        <span>S% {formatSvp(goalieStats.svp)}</span>
                       </div>
                       
                       <div style={{ 
@@ -2790,9 +3203,9 @@
                         whiteSpace: 'nowrap',
                         overflow: 'hidden'
                       }}>
-                        <span>PIM {careerGoalieStats.pim || 0}</span>
-                        <span>Rec. {careerGoalieStats.w}-{careerGoalieStats.l}-{careerGoalieStats.t} ({careerGoalieStats.so})</span>
-                        <span>S% {careerGoalieStats.svp}</span>
+                        {showPIM && <span>PIM {careerGoalieStats.pim || 0}</span>}
+                        <span>Rec. {careerGoalieStats.w}-{careerGoalieStats.l}-{careerGoalieStats.t} (SO {careerGoalieStats.so})</span>
+                        <span>S% {formatSvp(careerGoalieStats.svp)}</span>
                       </div>
                     </>
                   )}
@@ -3020,12 +3433,12 @@
                 </div>
               )}
 
-              {/* Pronunciations Modal */}
+              {/* Pronunciations & Post HS Info Modal */}
               {showPronunciations && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                  <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="bg-white rounded-lg shadow-xl w-full max-h-[90vh] overflow-y-auto" style={{ maxWidth: '780px' }}>
                     <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-                      <h2 className="text-xl font-bold">My Team Pronunciations</h2>
+                      <h2 className="text-xl font-bold">My Team Pronunciations & Post HS Info</h2>
                       <button onClick={() => setShowPronunciations(false)} className="text-gray-500 hover:text-gray-700">
                         <X size={24} />
                       </button>
@@ -3033,32 +3446,141 @@
                     
                     <div className="p-6">
                       <div className="bg-purple-50 p-4 rounded">
-                        <h3 className="font-bold mb-2">Player Name Pronunciation Guide - only works after Legacy Roster Import</h3>
-                        <p className="text-sm mb-3 text-gray-600">Add phonetic pronunciations for player last names (saved for future use)</p>
-                        
-                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                          {myTeamData.roster.map((player) => (
-                            <div key={player.id} className="flex items-center gap-2">
-                              <span className="text-sm font-semibold w-40">#{player.number} {player.lastName}:</span>
-                              <input
-                                type="text"
-                                value={myTeamSetup.pronunciations[player.lastName] || ''}
-                                onChange={(e) => {
-                                  setMyTeamSetup({
-                                    ...myTeamSetup, 
-                                    pronunciations: {
-                                      ...myTeamSetup.pronunciations,
-                                      [player.lastName]: e.target.value
-                                    }
-                                  });
-                                }}
-                                placeholder='e.g., "HOLL-a-nehn"'
-                                className="flex-1 border rounded px-2 py-1 text-sm"
-                              />
-                            </div>
-                          ))}
+                        <h3 className="font-bold mb-1">Player Name Pronunciation Guide & Post-HS Commitments</h3>
+                        <p className="text-sm mb-3 text-gray-600">Only works after Legacy Roster Import. Pronunciations and logos are saved per player and will persist for future games.</p>
+
+                        {/* Column headers */}
+                        <div className="grid mb-2" style={{ gridTemplateColumns: '140px 160px 1fr 1fr', gap: '8px', alignItems: 'center' }}>
+                          <div className="text-xs font-bold text-gray-500">Player</div>
+                          <div className="text-xs font-bold text-gray-500">Phonetic Pronunciation</div>
+                          <div className="text-xs font-bold text-gray-500 text-center">Junior Team Logo</div>
+                          <div className="text-xs font-bold text-gray-500 text-center">College Team Logo</div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-2">💡 Pronunciations are saved by last name and will auto-apply to future rosters</p>
+
+                        <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
+                          {myTeamData.roster.map((player) => {
+                            const pInfo = (myTeamSetup.postHSInfo && myTeamSetup.postHSInfo[player.id]) || {};
+
+                            const handleLogoUploadPostHS = (field, file) => {
+                              if (!file) return;
+                              compressImage(file, 200, 200, 0.8).then(compressed => {
+                                setMyTeamSetup(prev => ({
+                                  ...prev,
+                                  postHSInfo: {
+                                    ...(prev.postHSInfo || {}),
+                                    [player.id]: {
+                                      ...((prev.postHSInfo && prev.postHSInfo[player.id]) || {}),
+                                      [field]: compressed
+                                    }
+                                  }
+                                }));
+                              }).catch(err => {
+                                console.error('Logo compress error:', err);
+                                alert('Error processing image. Please try a smaller file.');
+                              });
+                            };
+
+                            const handleLogoPastePostHS = async (field) => {
+                              try {
+                                const clipboardItems = await navigator.clipboard.read();
+                                for (const item of clipboardItems) {
+                                  for (const type of item.types) {
+                                    if (type.startsWith('image/')) {
+                                      const blob = await item.getType(type);
+                                      compressImage(blob, 200, 200, 0.8).then(compressed => {
+                                        setMyTeamSetup(prev => ({
+                                          ...prev,
+                                          postHSInfo: {
+                                            ...(prev.postHSInfo || {}),
+                                            [player.id]: {
+                                              ...((prev.postHSInfo && prev.postHSInfo[player.id]) || {}),
+                                              [field]: compressed
+                                            }
+                                          }
+                                        }));
+                                      });
+                                      return;
+                                    }
+                                  }
+                                }
+                                alert('No image found in clipboard. Copy an image first, then click Paste.');
+                              } catch (err) {
+                                console.error('Clipboard paste error:', err);
+                                alert('Unable to paste. Copy an image to your clipboard first.');
+                              }
+                            };
+
+                            const handleRemoveLogo = (field) => {
+                              setMyTeamSetup(prev => ({
+                                ...prev,
+                                postHSInfo: {
+                                  ...(prev.postHSInfo || {}),
+                                  [player.id]: {
+                                    ...((prev.postHSInfo && prev.postHSInfo[player.id]) || {}),
+                                    [field]: null
+                                  }
+                                }
+                              }));
+                            };
+
+                            const LogoCell = ({ field, label, value }) => (
+                              <div className="flex flex-col items-center gap-1">
+                                {value ? (
+                                  <div className="flex flex-col items-center gap-1">
+                                    <img src={value} alt={label} style={{ width: '40px', height: '40px', objectFit: 'contain', border: '1px solid #ddd', borderRadius: '4px', background: 'white' }} />
+                                    <div className="flex gap-1">
+                                      <label className="cursor-pointer text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded hover:bg-blue-200">
+                                        📁
+                                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleLogoUploadPostHS(field, e.target.files[0])} />
+                                      </label>
+                                      <button onClick={() => handleLogoPastePostHS(field)} className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded hover:bg-green-200">📋</button>
+                                      <button onClick={() => handleRemoveLogo(field)} className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded hover:bg-red-200">✕</button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex gap-1 items-center">
+                                    <label className="cursor-pointer text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 rounded px-2 py-1 border border-dashed border-gray-300 flex items-center gap-1">
+                                      📁 Upload
+                                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleLogoUploadPostHS(field, e.target.files[0])} />
+                                    </label>
+                                    <button onClick={() => handleLogoPastePostHS(field)} className="text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 rounded px-2 py-1 border border-dashed border-gray-300">📋 Paste</button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+
+                            return (
+                              <div key={player.id} className="grid items-center py-1 border-b border-purple-100" style={{ gridTemplateColumns: '140px 160px 1fr 1fr', gap: '8px' }}>
+                                {/* Player label */}
+                                <span className="text-sm font-semibold whitespace-nowrap">#{player.number} {player.lastName}:</span>
+
+                                {/* Pronunciation input */}
+                                <input
+                                  type="text"
+                                  value={myTeamSetup.pronunciations[player.lastName] || ''}
+                                  onChange={(e) => {
+                                    setMyTeamSetup({
+                                      ...myTeamSetup,
+                                      pronunciations: {
+                                        ...myTeamSetup.pronunciations,
+                                        [player.lastName]: e.target.value
+                                      }
+                                    });
+                                  }}
+                                  placeholder='"HOLL-a-nehn"'
+                                  className="border rounded px-2 py-1 text-sm w-full"
+                                />
+
+                                {/* Junior logo */}
+                                <LogoCell field="juniorLogo" label="Junior Team" value={pInfo.juniorLogo || null} />
+
+                                {/* College logo */}
+                                <LogoCell field="collegeLogo" label="College" value={pInfo.collegeLogo || null} />
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-3">💡 Pronunciations saved by last name · Logos saved by player ID · Both persist across future rosters · White or transparent logo backgrounds work best</p>
                       </div>
                     </div>
                     
@@ -3090,15 +3612,15 @@
                     
                     <div className="p-6">
                       <div className="bg-purple-50 p-4 rounded mb-4">
-                        <h3 className="font-bold mb-2">📦 Subscriber Build Export v14.7.7</h3>
+                        <h3 className="font-bold mb-2">📦 Subscriber Build Export v16.0</h3>
                         <p className="text-sm text-gray-600 mb-2">
-                          Copy this JSON configuration and send it to Claude to build a customized subscriber version. 
+                          Copy this JSON configuration and paste it into the Legacy Line Charts Claude project to build a customized subscriber version.
                         </p>
                         <p className="text-sm text-gray-600 mb-2">
                           <strong>🔒 Baked into subscriber site:</strong> Team name, logo, colors, arena, career stats, <span className="text-purple-700 font-semibold">+ MSHSL Teams Database (142 teams)</span>.
                         </p>
                         <p className="text-sm text-gray-600">
-                          <strong>✏️ Editable by subscriber coach:</strong> Pronunciations (saved to their local storage).
+                          <strong>✏️ Editable by subscriber coach:</strong> Pronunciations &amp; Post-HS info (saved to their local storage).
                         </p>
                       </div>
                       
@@ -3113,13 +3635,13 @@
                       </div>
                       
                       <div className="bg-yellow-50 p-3 rounded text-sm">
-                        <strong>💡 How to use:</strong>
+                        <strong>💡 How to build a subscriber site:</strong>
                         <ol className="list-decimal ml-5 mt-1 space-y-1">
+                          <li>Import all team data (Home, Roster, Player Stats, Career Seasons)</li>
                           <li>Click "Copy to Clipboard" below</li>
-                          <li>Start a new Claude conversation</li>
-                          <li>Say: "Here's the config for [Team Name]. Build their subscriber version."</li>
-                          <li>Paste the JSON</li>
-                          <li>Claude will generate their custom HTML file</li>
+                          <li>Go to the Legacy Line Charts Claude project</li>
+                          <li>Say: "Build a subscriber site for [Team Name] using v16.0 as the template. Here's the config:" and paste the JSON</li>
+                          <li>Claude will deliver a custom HTML file ready for GitHub Pages</li>
                         </ol>
                       </div>
                     </div>
@@ -3310,51 +3832,80 @@
                     )}
                     <h1 className="text-xl font-bold">Legacy Line Charts</h1>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
                     {!SUBSCRIBER_MODE && (
-                      <button onClick={() => setShowSetup(true)} className="bg-white text-blue-900 px-3 py-1.5 rounded hover:bg-gray-100 flex items-center gap-1 text-sm font-semibold">
-                        <Settings size={16} /> My Team Setup
+                      <button onClick={() => setShowSetup(true)} className="bg-white text-blue-900 px-3 py-1 rounded hover:bg-gray-100 flex items-center gap-1 font-semibold" style={{ lineHeight: '1.1' }}>
+                        <Settings size={16} />
+                        <div className="flex flex-col items-start" style={{ fontSize: '10px' }}>
+                          <span>My Team</span>
+                          <span>Setup</span>
+                        </div>
                       </button>
                     )}
                     {!SUBSCRIBER_MODE && (
-                      <button onClick={() => setShowCareerStats(true)} className="bg-white text-blue-900 px-3 py-1.5 rounded hover:bg-gray-100 flex items-center gap-1 text-sm font-semibold">
-                        <Settings size={16} /> My Team Career Stats
+                      <button onClick={() => setShowCareerStats(true)} className="bg-white text-blue-900 px-3 py-1 rounded hover:bg-gray-100 flex items-center gap-1 font-semibold" style={{ lineHeight: '1.1' }}>
+                        <Settings size={16} />
+                        <div className="flex flex-col items-start" style={{ fontSize: '10px' }}>
+                          <span>My Team</span>
+                          <span>Career Stats</span>
+                        </div>
                       </button>
                     )}
-                    <button onClick={() => { setImportStep('myTeamHome'); setShowImport(true); }} className="bg-white text-blue-900 px-3 py-1.5 rounded hover:bg-gray-100 flex items-center gap-1 text-sm font-semibold">
-                      <Upload size={16} /> Import Next Game Data
+                    <button onClick={() => { setImportStep('myTeamHome'); setShowImport(true); }} className="bg-white text-blue-900 px-3 py-1 rounded hover:bg-gray-100 flex items-center gap-1 font-semibold" style={{ lineHeight: '1.1' }}>
+                      <Upload size={16} />
+                      <div className="flex flex-col items-start" style={{ fontSize: '10px' }}>
+                        <span>Import</span>
+                        <span>Next Game Data</span>
+                      </div>
                     </button>
-                    <button onClick={() => setShowPronunciations(true)} className="bg-white text-blue-900 px-3 py-1.5 rounded hover:bg-gray-100 flex items-center gap-1 text-sm font-semibold">
-                      <Settings size={16} /> My Team Pronunciations
+                    <button onClick={() => setShowPronunciations(true)} className="bg-white text-blue-900 px-3 py-1 rounded hover:bg-gray-100 flex items-center gap-1 font-semibold" style={{ lineHeight: '1.1' }}>
+                      <Settings size={16} />
+                      <div className="flex flex-col items-start" style={{ fontSize: '10px' }}>
+                        <span>My Team</span>
+                        <span>Pronunciations & Post HS Info</span>
+                      </div>
                     </button>
                     {!SUBSCRIBER_MODE && (
-                      <button onClick={handleExportConfig} className="bg-purple-600 text-white px-3 py-1.5 rounded hover:bg-purple-700 flex items-center gap-1 text-sm font-semibold">
-                        <Download size={16} /> Export Config
+                      <button onClick={handleExportConfig} className="bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700 flex items-center gap-1 font-semibold" style={{ lineHeight: '1.1' }}>
+                        <Download size={16} />
+                        <div className="flex flex-col items-start" style={{ fontSize: '10px' }}>
+                          <span>Export</span>
+                          <span>Config</span>
+                        </div>
                       </button>
                     )}
-                    <button onClick={() => window.print()} className="bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 flex items-center gap-1 text-sm font-semibold">
-                      <Printer size={16} /> Print
+                    <button onClick={() => window.print()} className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 flex items-center gap-1 font-semibold" style={{ lineHeight: '1.1' }}>
+                      <Printer size={16} />
+                      <div className="flex flex-col items-start" style={{ fontSize: '10px' }}>
+                        <span>PDF</span>
+                        <span>Print</span>
+                      </div>
                     </button>
                     <button 
                       onClick={() => {
                         if (confirm('Clear all line assignments? This will remove all players from lines, pairs, and goalies. Your roster will remain intact.')) {
                           setLines({
-                            line1: { lw: null, c: null, rw: null, color: 'GREEN' },
-                            line2: { lw: null, c: null, rw: null, color: 'RED' },
-                            line3: { lw: null, c: null, rw: null, color: 'BLUE' },
-                            line4: { lw: null, c: null, rw: null, color: 'YELLOW' },
-                            d1: { ld: null, rd: null, color: 'GREEN' },
-                            d2: { ld: null, rd: null, color: 'RED' },
-                            d3: { ld: null, rd: null, color: 'BLUE' },
-                            goalies: { starter: null, starterColor: 'YELLOW', backup: null, backupColor: 'WHITE' }
+                            line1: { lw: null, c: null, rw: null, color: 'WHITE' },
+                            line2: { lw: null, c: null, rw: null, color: 'WHITE' },
+                            line3: { lw: null, c: null, rw: null, color: 'WHITE' },
+                            line4: { lw: null, c: null, rw: null, color: 'WHITE' },
+                            d1: { ld: null, rd: null, color: 'WHITE' },
+                            d2: { ld: null, rd: null, color: 'WHITE' },
+                            d3: { ld: null, rd: null, color: 'WHITE' },
+                            goalies: { starter: null, starterColor: 'WHITE', backup: null, backupColor: 'WHITE' }
                           });
                           console.log('🧹 Cleared all line assignments');
                         }
                       }} 
-                      className="bg-gray-500 text-white px-3 py-1.5 rounded hover:bg-gray-600 flex items-center gap-1 text-sm font-semibold"
+                      className="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600 flex items-center gap-1 font-semibold"
+                      style={{ lineHeight: '1.1' }}
                       title="Reset all line assignments"
                     >
-                      <X size={16} /> Clear Lines
+                      <X size={16} />
+                      <div className="flex flex-col items-start" style={{ fontSize: '10px' }}>
+                        <span>Clear</span>
+                        <span>Lines</span>
+                      </div>
                     </button>
                   </div>
                 </div>
@@ -3390,6 +3941,9 @@
 			}}>{myTeamData.lastGame.ourScore} - {myTeamData.lastGame.oppScore}</span> {myTeamData.lastGame.opponent}
                           </div>
                           <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', wordWrap: 'break-word', color: leftGameTextColor }}>{myTeamData.lastGame.date}</div>
+                          {myTeamData.lastGame.location && (
+                            <div style={{ fontSize: 'clamp(7px, 0.8vw, 9px)', wordWrap: 'break-word', color: leftGameTextColor, fontStyle: 'italic' }}>{myTeamData.lastGame.location}</div>
+                          )}
                         </>
                       ) : (
                         <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', color: leftGameTextColor }}>N/A</div>
@@ -3406,6 +3960,11 @@
                           <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', wordWrap: 'break-word', color: leftGameTextColor }}>
                             {myTeamData.nextGame.date} @ {myTeamData.nextGame.time}
                           </div>
+                          {myTeamData.nextGame.location && (
+                            <div style={{ fontSize: 'clamp(7px, 0.8vw, 9px)', wordWrap: 'break-word', color: leftGameTextColor, fontStyle: 'italic' }}>
+                              {myTeamData.nextGame.location}
+                            </div>
+                          )}
                         </>
                       ) : (
                         <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', color: leftGameTextColor }}>TBD</div>
@@ -3483,7 +4042,11 @@
                       {myTeamData.currentGame && myTeamData.currentGame.date && (
                         <div style={{ fontSize: 'clamp(11px, 1.4vw, 15px)', color: '#000000' }}>
                           {myTeamData.currentGame.date}{myTeamData.currentGame.time ? ` @ ${myTeamData.currentGame.time}` : ''}
-                          {myTeamData.currentGame.location ? ` at ${myTeamData.currentGame.location}` : ''}
+                        </div>
+                      )}
+                      {myTeamData.currentGame && myTeamData.currentGame.location && (
+                        <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', color: '#000000', fontStyle: 'italic', wordWrap: 'break-word' }}>
+                          {myTeamData.currentGame.location}
                         </div>
                       )}
                     </div>
@@ -3548,6 +4111,9 @@
 			}}>{opponentData.lastGame.ourScore} - {opponentData.lastGame.oppScore}</span> {opponentData.lastGame.opponent}
                           </div>
                           <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', wordWrap: 'break-word', color: rightGameTextColor }}>{opponentData.lastGame.date}</div>
+                          {opponentData.lastGame.location && (
+                            <div style={{ fontSize: 'clamp(7px, 0.8vw, 9px)', wordWrap: 'break-word', color: rightGameTextColor, fontStyle: 'italic' }}>{opponentData.lastGame.location}</div>
+                          )}
                         </>
                       ) : (
                         <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', color: rightGameTextColor }}>N/A</div>
@@ -3564,6 +4130,11 @@
                           <div style={{ fontSize: 'clamp(8px, 0.9vw, 10px)', wordWrap: 'break-word', color: rightGameTextColor }}>
                             {opponentData.nextGame.date} @ {opponentData.nextGame.time}
                           </div>
+                          {opponentData.nextGame.location && (
+                            <div style={{ fontSize: 'clamp(7px, 0.8vw, 9px)', wordWrap: 'break-word', color: rightGameTextColor, fontStyle: 'italic' }}>
+                              {opponentData.nextGame.location}
+                            </div>
+                          )}
                         </>
                       ) : (
                         <div style={{ fontSize: 'clamp(10px, 1.1vw, 13px)', color: rightGameTextColor }}>TBD</div>
@@ -3574,6 +4145,44 @@
                 </>
                   );
                 })()}
+
+                {/* Stat Display Toggles - no-print, above Available Players */}
+                <div className="no-print flex items-center gap-3 px-2 py-1 mb-1 bg-white border border-gray-200 rounded" style={{ fontSize: '12px' }}>
+                  <span className="font-bold text-gray-600" style={{ fontSize: '11px' }}>My Team Stats Display:</span>
+                  <button
+                    onClick={() => setShowPlusMinus(v => !v)}
+                    className={`px-3 py-1 rounded font-semibold border-2 transition-colors ${showPlusMinus ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-300'}`}
+                    style={{ fontSize: '11px' }}
+                    title="Toggle +/- stat visibility on My Team player cards"
+                  >
+                    {showPlusMinus ? '✓' : '✕'} +/- Stats
+                  </button>
+                  <button
+                    onClick={() => setShowFaceoffs(v => !v)}
+                    className={`px-3 py-1 rounded font-semibold border-2 transition-colors ${showFaceoffs ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-300'}`}
+                    style={{ fontSize: '11px' }}
+                    title="Toggle Faceoff stat visibility on My Team player cards"
+                  >
+                    {showFaceoffs ? '✓' : '✕'} Faceoff Stats
+                  </button>
+                  <button
+                    onClick={() => setShowBlockedShots(v => !v)}
+                    className={`px-3 py-1 rounded font-semibold border-2 transition-colors ${showBlockedShots ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-300'}`}
+                    style={{ fontSize: '11px' }}
+                    title="Toggle Blocked Shots stat visibility on My Team player cards"
+                  >
+                    {showBlockedShots ? '✓' : '✕'} Blocked Shots Stats
+                  </button>
+                  <button
+                    onClick={() => setShowPIM(v => !v)}
+                    className={`px-3 py-1 rounded font-semibold border-2 transition-colors ${showPIM ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-300'}`}
+                    style={{ fontSize: '11px' }}
+                    title="Toggle PIM stat visibility on My Team player cards"
+                  >
+                    {showPIM ? '✓' : '✕'} PIM Stats
+                  </button>
+                  <span className="text-gray-400" style={{ fontSize: '10px' }}>Settings saved automatically</span>
+                </div>
 
                 {/* Available Players */}
                 <div className="no-print bg-gray-100 rounded p-2 mb-1">
@@ -3592,22 +4201,16 @@
                   <div className="flex items-center gap-2 mb-1">
                     <div className="no-print text-xs" style={{ width: '60px' }}></div>
                     <div className="flex-1 grid grid-cols-3 gap-1">
-                      <div className="text-xs font-bold text-center" style={{ fontSize: '11px' }}>LW</div>
-                      <div className="text-xs font-bold text-center" style={{ fontSize: '11px' }}>C</div>
-                      <div className="text-xs font-bold text-center" style={{ fontSize: '11px' }}>RW</div>
+                      <div className="text-xs font-bold text-center" style={{ fontSize: '11px' }}>Left Wing</div>
+                      <div className="text-xs font-bold text-center" style={{ fontSize: '11px' }}>Center</div>
+                      <div className="text-xs font-bold text-center" style={{ fontSize: '11px' }}>Right Wing</div>
                     </div>
                   </div>
                   
                   {['line1', 'line2', 'line3', 'line4'].map((line, idx) => (
                     <div key={line} className={`mb-1 rounded p-0 border-2 ${colorClasses[lines[line].color]}`}>
                       <div className="flex items-center gap-2 mb-0">
-                        <select
-                          value={lines[line].color}
-                          onChange={(e) => handleLineColorChange(line, e.target.value)}
-                          className="no-print text-xs border rounded px-1"
-                        >
-                          {colorOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
+                        <ColorPicker value={lines[line].color} onChange={(c) => handleLineColorChange(line, c)} />
                         <div className="flex-1 grid grid-cols-3 gap-1">
                           <LineSlot line={line} position="lw" label="LW" showLabel={false} />
                           <LineSlot line={line} position="c" label="C" showLabel={false} />
@@ -3626,8 +4229,8 @@
                   </div>
                   
                   <div className="grid grid-cols-3 gap-1 mb-1">
-                    <div className="text-xs font-bold text-center" style={{ fontSize: '11px' }}>LD</div>
-                    <div className="text-xs font-bold text-center" style={{ fontSize: '11px' }}>RD</div>
+                    <div className="text-xs font-bold text-center" style={{ fontSize: '11px' }}>Left Defense</div>
+                    <div className="text-xs font-bold text-center" style={{ fontSize: '11px' }}>Right Defense</div>
                     <div></div>
                   </div>
 
@@ -3635,13 +4238,7 @@
                   <div className="grid grid-cols-3 gap-1 mb-1">
                     <div className={`col-span-2 rounded p-0 border-2 ${colorClasses[lines.d1.color]}`}>
                       <div className="flex items-center gap-1">
-                        <select
-                          value={lines.d1.color}
-                          onChange={(e) => handleLineColorChange('d1', e.target.value)}
-                          className="no-print text-xs border rounded px-1"
-                        >
-                          {colorOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
+                        <ColorPicker value={lines.d1.color} onChange={(c) => handleLineColorChange('d1', c)} />
                         <div className="flex-1 grid grid-cols-2 gap-1">
                           <LineSlot line="d1" position="ld" label="LD" showLabel={false} />
                           <LineSlot line="d1" position="rd" label="RD" showLabel={false} />
@@ -3650,14 +4247,7 @@
                     </div>
                     <div className={`rounded p-0 border-2 ${colorClasses[lines.goalies.starterColor]}`}>
                       <div className="flex items-center gap-1">
-                        <select
-                          value={lines.goalies.starterColor}
-                          onChange={(e) => handleGoalieColorChange('starter', e.target.value)}
-                          className="no-print text-xs border rounded px-1"
-                          style={{ width: '50px' }}
-                        >
-                          {colorOptions.map(c => <option key={c} value={c}>{c.substring(0,3)}</option>)}
-                        </select>
+                        <ColorPicker value={lines.goalies.starterColor} onChange={(c) => handleGoalieColorChange('starter', c)} />
                         <div className="flex-1">
                           <LineSlot line="goalies" position="starter" label="Starter" showLabel={false} />
                         </div>
@@ -3669,13 +4259,7 @@
                   <div className="grid grid-cols-3 gap-1 mb-1">
                     <div className={`col-span-2 rounded p-0 border-2 ${colorClasses[lines.d2.color]}`}>
                       <div className="flex items-center gap-1">
-                        <select
-                          value={lines.d2.color}
-                          onChange={(e) => handleLineColorChange('d2', e.target.value)}
-                          className="no-print text-xs border rounded px-1"
-                        >
-                          {colorOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
+                        <ColorPicker value={lines.d2.color} onChange={(c) => handleLineColorChange('d2', c)} />
                         <div className="flex-1 grid grid-cols-2 gap-1">
                           <LineSlot line="d2" position="ld" label="LD" showLabel={false} />
                           <LineSlot line="d2" position="rd" label="RD" showLabel={false} />
@@ -3684,14 +4268,7 @@
                     </div>
                     <div className={`rounded p-0 border-2 ${colorClasses[lines.goalies.backupColor]}`}>
                       <div className="flex items-center gap-1">
-                        <select
-                          value={lines.goalies.backupColor}
-                          onChange={(e) => handleGoalieColorChange('backup', e.target.value)}
-                          className="no-print text-xs border rounded px-1"
-                          style={{ width: '50px' }}
-                        >
-                          {colorOptions.map(c => <option key={c} value={c}>{c.substring(0,3)}</option>)}
-                        </select>
+                        <ColorPicker value={lines.goalies.backupColor} onChange={(c) => handleGoalieColorChange('backup', c)} />
                         <div className="flex-1">
                           <LineSlot line="goalies" position="backup" label="Backup" showLabel={false} />
                         </div>
@@ -3703,13 +4280,7 @@
                   <div className="grid grid-cols-3 gap-1 mb-1">
                     <div className={`col-span-2 rounded p-0 border-2 ${colorClasses[lines.d3.color]}`}>
                       <div className="flex items-center gap-1">
-                        <select
-                          value={lines.d3.color}
-                          onChange={(e) => handleLineColorChange('d3', e.target.value)}
-                          className="no-print text-xs border rounded px-1"
-                        >
-                          {colorOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
+                        <ColorPicker value={lines.d3.color} onChange={(c) => handleLineColorChange('d3', c)} />
                         <div className="flex-1 grid grid-cols-2 gap-1">
                           <LineSlot line="d3" position="ld" label="LD" showLabel={false} />
                           <LineSlot line="d3" position="rd" label="RD" showLabel={false} />
@@ -3722,20 +4293,26 @@
                         background: `${myTeamSetup.colors.primary}10`,
                         padding: '2px'
                       }}>
-                        <div style={{ fontSize: '8px' }} className="font-bold text-center mb-0">{myTeamData.nickname} Penalty Kill</div>
-                        <div className="flex-1 flex flex-col justify-around" style={{ fontSize: '11px', lineHeight: '1.0' }}>
+                        <input
+                          type="text"
+                          value={coachNotes.pkTitle || 'Add Notes'}
+                          onChange={(e) => setCoachNotes({...coachNotes, pkTitle: e.target.value})}
+                          className="w-full border-0 bg-transparent text-center font-bold placeholder-print-hide"
+                          style={{ fontSize: '10px', padding: '0px', outline: 'none', marginBottom: '0px' }}
+                        />
+                        <div className="flex-1 flex flex-col justify-around" style={{ fontSize: '9px', lineHeight: '1.0' }}>
                           {[0,1,2,3,4].map(i => (
                             <input 
                               key={i}
                               type="text" 
                               placeholder="" 
-                              className="w-full border-0 bg-transparent text-center font-bold"
-                              style={{ fontSize: '11px', padding: '0px', outline: 'none' }}
+                              className="w-full border-0 bg-transparent text-center"
+                              style={{ fontSize: '9px', padding: '0px', outline: 'none', fontWeight: 'normal' }}
                               value={coachNotes.pk?.split('\n')[i] || ''}
                               onChange={(e) => {
-                                const lines = coachNotes.pk?.split('\n') || ['','','','',''];
-                                lines[i] = e.target.value;
-                                setCoachNotes({...coachNotes, pk: lines.join('\n')});
+                                const pkLines = coachNotes.pk?.split('\n') || ['','','','',''];
+                                pkLines[i] = e.target.value;
+                                setCoachNotes({...coachNotes, pk: pkLines.join('\n')});
                               }}
                             />
                           ))}
@@ -3747,20 +4324,26 @@
                         background: `${myTeamSetup.colors.primary}10`,
                         padding: '2px'
                       }}>
-                        <div style={{ fontSize: '8px' }} className="font-bold text-center mb-0">{myTeamData.nickname} Power Play</div>
-                        <div className="flex-1 flex flex-col justify-around" style={{ fontSize: '11px', lineHeight: '1.0' }}>
+                        <input
+                          type="text"
+                          value={coachNotes.ppTitle || 'Add Notes'}
+                          onChange={(e) => setCoachNotes({...coachNotes, ppTitle: e.target.value})}
+                          className="w-full border-0 bg-transparent text-center font-bold placeholder-print-hide"
+                          style={{ fontSize: '10px', padding: '0px', outline: 'none', marginBottom: '0px' }}
+                        />
+                        <div className="flex-1 flex flex-col justify-around" style={{ fontSize: '9px', lineHeight: '1.0' }}>
                           {[0,1,2,3,4].map(i => (
                             <input 
                               key={i}
                               type="text" 
                               placeholder="" 
-                              className="w-full border-0 bg-transparent text-center font-bold"
-                              style={{ fontSize: '11px', padding: '0px', outline: 'none' }}
+                              className="w-full border-0 bg-transparent text-center"
+                              style={{ fontSize: '9px', padding: '0px', outline: 'none', fontWeight: 'normal' }}
                               value={coachNotes.pp?.split('\n')[i] || ''}
                               onChange={(e) => {
-                                const lines = coachNotes.pp?.split('\n') || ['','','','',''];
-                                lines[i] = e.target.value;
-                                setCoachNotes({...coachNotes, pp: lines.join('\n')});
+                                const ppLines = coachNotes.pp?.split('\n') || ['','','','',''];
+                                ppLines[i] = e.target.value;
+                                setCoachNotes({...coachNotes, pp: ppLines.join('\n')});
                               }}
                             />
                           ))}
@@ -3800,32 +4383,158 @@
                 </div>
                 
                 {/* Creator Credit - Page 1 */}
-                <div style={{ textAlign: 'center', fontSize: '8px', color: '#666', marginTop: '4px', paddingTop: '2px', paddingBottom: '2px' }}>
+                <div style={{ textAlign: 'center', fontSize: '10px', color: '#000000', marginTop: '4px', paddingTop: '2px', paddingBottom: '2px' }}>
                   Created exclusively for the {myTeamData.teamName} {myTeamData.nickname} by Legacy Line Charts - legacylinecharts@gmail.com - © Legacy Line Charts
                 </div>
               </div>
 
               {/* Print Page 2 */}
-              <div className="print-page-2 bg-white p-2 max-w-7xl mx-auto page-break" style={{ maxWidth: '7.875in' }}>
-                {/* Opponent Header */}
-                <div className="rounded-lg p-2 mb-2" style={{ border: `3px solid ${opponentColors.primary}` }}>
-                  <h2 className="text-xl font-black text-center mb-0" style={{ color: opponentColors.primary }}>
-                    Opponent: {opponentData.teamName} {opponentData.nickname}
-                  </h2>
-                  <div className="text-center text-xs font-semibold">
-                    Record: {opponentData.record.w}-{opponentData.record.l}-{opponentData.record.t}
-                  </div>
-                </div>
+              <div className="print-page-2 bg-white p-0 max-w-7xl mx-auto page-break" style={{ maxWidth: '7.875in', padding: '0.05in' }}>
+                {/* Opponent Header - Full Scouting Header */}
+                {(() => {
+                  // Top 3 leaders from opponent roster
+                  const skaters = opponentData.roster.filter(p => p.position !== 'G' && p.stats);
+                  const topG   = [...skaters].sort((a,b) => (b.stats.g||0)  - (a.stats.g||0)).slice(0,3);
+                  const topA   = [...skaters].sort((a,b) => (b.stats.a||0)  - (a.stats.a||0)).slice(0,3);
+                  const topPts = [...skaters].sort((a,b) => (b.stats.pts||0)- (a.stats.pts||0)).slice(0,3);
+
+                  const oc = opponentColors.primary;
+                  const os = opponentColors.secondary;
+
+                  // ALL boxes use identical label and value font sizes
+                  const boxLabelSize = '9px';
+                  const boxValueSize = 'clamp(18px, 2vw, 22px)';
+
+                  const OppStatBox = ({ label, value }) => (
+                    <div style={{
+                      background: 'white', borderRadius: '4px', textAlign: 'center',
+                      display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                      alignItems: 'center', padding: '2px', border: `2px solid ${os}`, flex: 1
+                    }}>
+                      <div style={{ fontSize: boxLabelSize, color: oc, fontWeight: '600', lineHeight: '1.2' }}>{label}</div>
+                      <div style={{ fontSize: boxValueSize, color: oc, fontWeight: 'bold', lineHeight: '1.1' }}>{value}</div>
+                    </div>
+                  );
+
+                  const EditableStatBox = ({ label, field }) => (
+                    <div style={{
+                      background: 'white', borderRadius: '4px', textAlign: 'center',
+                      display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                      alignItems: 'center', padding: '2px', border: `2px solid ${os}`, flex: 1
+                    }}>
+                      <div style={{ fontSize: boxLabelSize, color: oc, fontWeight: '600', lineHeight: '1.2' }}>{label}</div>
+                      <input
+                        type="text"
+                        value={oppSpecialTeamsManual[field] || ''}
+                        onChange={(e) => setOppSpecialTeamsManual({...oppSpecialTeamsManual, [field]: e.target.value})}
+                        className="no-print border-0 bg-transparent text-center w-full placeholder-print-hide"
+                        style={{ fontSize: boxValueSize, fontWeight: 'bold', color: oc, padding: '0', outline: 'none', lineHeight: '1.1' }}
+                        placeholder="—"
+                      />
+                      <div className="print-only" style={{ fontSize: boxValueSize, fontWeight: 'bold', color: oc, lineHeight: '1.1' }}>
+                        {oppSpecialTeamsManual[field] || '—'}
+                      </div>
+                    </div>
+                  );
+
+                  return (
+                    <div style={{
+                      background: 'white',
+                      border: `3px solid ${oc}`,
+                      borderRadius: '6px',
+                      display: 'grid',
+                      gridTemplateColumns: '19% 7% 48% 26%',
+                      gap: '4px',
+                      padding: '5px',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      marginBottom: '4px'
+                    }}>
+
+                      {/* COL 1 (19%): Logo + team name + record */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '3px', gap: '3px' }}>
+                        <div style={{
+                          width: '88px', height: '88px',
+                          backgroundColor: '#EFEFEF', borderRadius: '4px',
+                          border: `2px solid ${oc}`,
+                          boxShadow: `inset 0 0 0 1px ${os}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          padding: '4px', flexShrink: 0
+                        }}>
+                          {opponentLogo && (
+                            <img src={opponentLogo} alt="Opp" style={{ maxHeight: '80px', width: '100%', objectFit: 'contain' }} />
+                          )}
+                        </div>
+                        <div style={{ fontSize: 'clamp(12px, 1.4vw, 16px)', fontWeight: '900', color: oc, lineHeight: '1.1' }}>
+                          {opponentData.teamName} {opponentData.nickname}
+                        </div>
+                        <div style={{ fontSize: 'clamp(9px, 1vw, 11px)', color: oc }}>
+                          ({opponentData.record.w}-{opponentData.record.l}-{opponentData.record.t}, {opponentData.section}, {opponentData.conference})
+                        </div>
+                      </div>
+
+                      {/* COL 2 (7%): Goals/Game + GA/Game stacked */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', justifyContent: 'center', padding: '2px 0' }}>
+                        <OppStatBox label="Goals/Game" value={opponentData.stats.gpg.toFixed(2)} />
+                        <OppStatBox label="GA/Game"    value={opponentData.stats.gapg.toFixed(2)} />
+                      </div>
+
+                      {/* COL 3 (40%): Offensive Leaders — Option B */}
+                      <div style={{
+                        padding: '5px 6px',
+                        border: `2px solid ${os}`,
+                        borderRadius: '6px',
+                        backgroundColor: `${oc}18`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center'
+                      }}>
+                        <div style={{ fontSize: 'clamp(12px, 1.4vw, 15px)', fontWeight: 'bold', color: oc, textAlign: 'center', marginBottom: '5px' }}>
+                          Offensive Leaders
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '3px' }}>
+                          {['Goals','Assists','Points'].map(h => (
+                            <div key={h} style={{ fontSize: 'clamp(9px, 1vw, 11px)', fontWeight: 'bold', color: oc, textAlign: 'center', borderBottom: `1px solid ${os}`, paddingBottom: '2px', marginBottom: '2px' }}>{h}</div>
+                          ))}
+                          {[0,1,2].map(i => (
+                            <React.Fragment key={i}>
+                              <div style={{ fontSize: 'clamp(9px, 1vw, 11px)', color: oc, textAlign: 'left' }}>
+                                {topG[i]   ? `#${topG[i].number} ${topG[i].lastName} ${topG[i].stats.g}`       : '—'}
+                              </div>
+                              <div style={{ fontSize: 'clamp(9px, 1vw, 11px)', color: oc, textAlign: 'left' }}>
+                                {topA[i]   ? `#${topA[i].number} ${topA[i].lastName} ${topA[i].stats.a}`       : '—'}
+                              </div>
+                              <div style={{ fontSize: 'clamp(9px, 1vw, 11px)', color: oc, textAlign: 'left' }}>
+                                {topPts[i] ? `#${topPts[i].number} ${topPts[i].lastName} ${topPts[i].stats.pts}` : '—'}
+                              </div>
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* COL 4 (34%): 2x3 stat box grid — all same font size */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '3px', padding: '2px 8px 2px 2px' }}>
+                        <OppStatBox label="Power Play"  value={`${opponentData.stats.ppPct}%`} />
+                        <OppStatBox label="PPG/Opp"     value={oppSpecialTeamsManual.ppg  || '—'} />
+                        <OppStatBox label="SHGA"        value={oppSpecialTeamsManual.shga || '—'} />
+                        <OppStatBox label="Penalty Kill" value={`${opponentData.stats.pkPct}%`} />
+                        <OppStatBox label="PKGA/Opp"    value={oppSpecialTeamsManual.pkga || '—'} />
+                        <OppStatBox label="SHG"         value={oppSpecialTeamsManual.shg  || '—'} />
+                      </div>
+
+                    </div>
+                  );
+                })()}
 
                 {/* Opponent Roster */}
                 <div className="mb-2">
                   
                   {(() => {
                     const totalPlayers = opponentData.roster.length;
-                    const fontSize = totalPlayers >= 35 ? '10px' : 
-                                    totalPlayers >= 25 ? '11px' : 
-                                    totalPlayers >= 15 ? '13px' : '14px';
-                    const padding = totalPlayers >= 35 ? '2px' : '3px';
+                    const fontSize = totalPlayers >= 35 ? '9px' : 
+                                    totalPlayers >= 25 ? '10px' : 
+                                    totalPlayers >= 15 ? '11px' : '12px';
+                    const padding = '1px 2px';
                     
                     const forwards = opponentData.roster.filter(p => p.position === 'F').sort((a, b) => parseInt(a.number) - parseInt(b.number));
                     const defense = opponentData.roster.filter(p => p.position === 'D').sort((a, b) => parseInt(a.number) - parseInt(b.number));
@@ -3877,26 +4586,26 @@
                           </h3>
                           <table className="w-full border-collapse" style={{ fontSize }}>
                             <thead>
-                              <tr className="bg-gray-200" style={{ fontSize: '11px', fontWeight: 'bold' }}>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>#</th>
-                                <th className="border p-1 text-left" style={{ padding, maxWidth: '120px', width: '120px' }}>Name</th>
-                                <th className="border p-1" style={{ padding, width: '24px' }}>Gr</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>GP</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>G</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>A</th>
-                                <th className="border p-1" style={{ padding, width: '32px' }}>PTS</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>PPG</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>PPA</th>
-                                <th className="border p-1" style={{ padding, width: '24px' }}>SH</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>SHA</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>PIM</th>
+                              <tr className="bg-gray-200" style={{ fontSize: '10px', fontWeight: 'bold' }}>
+                                <th className="border p-1" style={{ padding, width: '22px' }}>#</th>
+                                <th className="border p-1 text-left" style={{ padding, maxWidth: '100px', width: '100px' }}>Name</th>
+                                <th className="border p-1" style={{ padding, width: '20px' }}>Gr</th>
+                                <th className="border p-1" style={{ padding, width: '22px' }}>GP</th>
+                                <th className="border p-1" style={{ padding, width: '22px' }}>G</th>
+                                <th className="border p-1" style={{ padding, width: '22px' }}>A</th>
+                                <th className="border p-1" style={{ padding, width: '26px' }}>PTS</th>
+                                <th className="border p-1" style={{ padding, width: '24px' }}>PPG</th>
+                                <th className="border p-1" style={{ padding, width: '24px' }}>PPA</th>
+                                <th className="border p-1" style={{ padding, width: '20px' }}>SH</th>
+                                <th className="border p-1" style={{ padding, width: '24px' }}>SHA</th>
+                                <th className="border p-1" style={{ padding, width: '22px' }}>PIM</th>
                               </tr>
                             </thead>
                             <tbody>
                               {forwards.map((player, idx) => (
                                 <tr key={player.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                   <td className="border font-bold text-center" style={{ padding }}>{player.number}</td>
-                                  <td className="border" style={{ padding, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.firstName} {player.lastName}{player.shoots ? ` (${player.shoots})` : ''}</td>
+                                  <td className="border" style={{ padding, maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.firstName} {player.lastName}{player.shoots ? ` (${player.shoots})` : ''}</td>
                                   <td className="border text-center" style={{ padding }}>{convertGradeToText(player.grade)}</td>
                                   <td className="border text-center" style={{ padding }}>{player.stats.gp}</td>
                                   <td className="border text-center" style={{ padding, backgroundColor: isMaxStat(player.stats.g, fwdMaxStats.g) ? '#FFFF00' : 'transparent' }}>{player.stats.g}</td>
@@ -3923,26 +4632,26 @@
                           </h3>
                           <table className="w-full border-collapse mb-2" style={{ fontSize }}>
                             <thead>
-                              <tr className="bg-gray-200" style={{ fontSize: '11px', fontWeight: 'bold' }}>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>#</th>
-                                <th className="border p-1 text-left" style={{ padding, maxWidth: '120px', width: '120px' }}>Name</th>
-                                <th className="border p-1" style={{ padding, width: '24px' }}>Gr</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>GP</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>G</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>A</th>
-                                <th className="border p-1" style={{ padding, width: '32px' }}>PTS</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>PPG</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>PPA</th>
-                                <th className="border p-1" style={{ padding, width: '24px' }}>SH</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>SHA</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>PIM</th>
+                              <tr className="bg-gray-200" style={{ fontSize: '10px', fontWeight: 'bold' }}>
+                                <th className="border p-1" style={{ padding, width: '22px' }}>#</th>
+                                <th className="border p-1 text-left" style={{ padding, maxWidth: '100px', width: '100px' }}>Name</th>
+                                <th className="border p-1" style={{ padding, width: '20px' }}>Gr</th>
+                                <th className="border p-1" style={{ padding, width: '22px' }}>GP</th>
+                                <th className="border p-1" style={{ padding, width: '22px' }}>G</th>
+                                <th className="border p-1" style={{ padding, width: '22px' }}>A</th>
+                                <th className="border p-1" style={{ padding, width: '26px' }}>PTS</th>
+                                <th className="border p-1" style={{ padding, width: '24px' }}>PPG</th>
+                                <th className="border p-1" style={{ padding, width: '24px' }}>PPA</th>
+                                <th className="border p-1" style={{ padding, width: '20px' }}>SH</th>
+                                <th className="border p-1" style={{ padding, width: '24px' }}>SHA</th>
+                                <th className="border p-1" style={{ padding, width: '22px' }}>PIM</th>
                               </tr>
                             </thead>
                             <tbody>
                               {defense.map((player, idx) => (
                                 <tr key={player.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                   <td className="border font-bold text-center" style={{ padding }}>{player.number}</td>
-                                  <td className="border" style={{ padding, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.firstName} {player.lastName}{player.shoots ? ` (${player.shoots})` : ''}</td>
+                                  <td className="border" style={{ padding, maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.firstName} {player.lastName}{player.shoots ? ` (${player.shoots})` : ''}</td>
                                   <td className="border text-center" style={{ padding }}>{convertGradeToText(player.grade)}</td>
                                   <td className="border text-center" style={{ padding }}>{player.stats.gp}</td>
                                   <td className="border text-center" style={{ padding, backgroundColor: isMaxStat(player.stats.g, defMaxStats.g) ? '#FFFF00' : 'transparent' }}>{player.stats.g}</td>
@@ -3963,20 +4672,20 @@
                           </h3>
                           <table className="w-full border-collapse" style={{ fontSize }}>
                             <thead>
-                              <tr className="bg-gray-200" style={{ fontSize: '11px', fontWeight: 'bold' }}>
-                                <th className="border p-1" style={{ padding, width: '30px' }}>#</th>
-                                <th className="border p-1 text-left" style={{ padding, maxWidth: '100px', width: '100px' }}>Name</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>Gr</th>
-                                <th className="border p-1" style={{ padding, width: '55px' }}>MIN</th>
-                                <th className="border p-1" style={{ padding, width: '25px' }}>W</th>
-                                <th className="border p-1" style={{ padding, width: '25px' }}>L</th>
-                                <th className="border p-1" style={{ padding, width: '25px' }}>T</th>
-                                <th className="border p-1" style={{ padding, width: '35px' }}>SOG</th>
-                                <th className="border p-1" style={{ padding, width: '30px' }}>SV</th>
-                                <th className="border p-1" style={{ padding, width: '28px' }}>GA</th>
-                                <th className="border p-1" style={{ padding, width: '38px' }}>GAA</th>
-                                <th className="border p-1" style={{ padding, width: '38px' }}>SV%</th>
-                                <th className="border p-1" style={{ padding, width: '25px' }}>SO</th>
+                              <tr className="bg-gray-200" style={{ fontSize: '10px', fontWeight: 'bold' }}>
+                                <th className="border p-1" style={{ padding, width: '22px' }}>#</th>
+                                <th className="border p-1 text-left" style={{ padding, maxWidth: '90px', width: '90px' }}>Name</th>
+                                <th className="border p-1" style={{ padding, width: '20px' }}>Gr</th>
+                                <th className="border p-1" style={{ padding, width: '46px' }}>MIN</th>
+                                <th className="border p-1" style={{ padding, width: '20px' }}>W</th>
+                                <th className="border p-1" style={{ padding, width: '20px' }}>L</th>
+                                <th className="border p-1" style={{ padding, width: '20px' }}>T</th>
+                                <th className="border p-1" style={{ padding, width: '28px' }}>SOG</th>
+                                <th className="border p-1" style={{ padding, width: '24px' }}>SV</th>
+                                <th className="border p-1" style={{ padding, width: '22px' }}>GA</th>
+                                <th className="border p-1" style={{ padding, width: '32px' }}>GAA</th>
+                                <th className="border p-1" style={{ padding, width: '32px' }}>SV%</th>
+                                <th className="border p-1" style={{ padding, width: '20px' }}>SO</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -4007,11 +4716,6 @@
 
                 {/* Diagrams & Notes */}
                 <div className="mt-2" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <div className="flex justify-between items-center mb-1">
-                    <h2 style={{ fontSize: '14px', color: 'black' }} className="font-bold">Pre-Game Preparation - Diagrams & Notes</h2>
-                    <span className="no-print text-xs text-gray-500 italic">🗜️ Images auto-compressed & saved</span>
-                  </div>
-                  
                   <div style={{ display: 'flex', gap: '4px', flexGrow: 1 }}>
                     {/* COLUMN 1: Large diagram (60%) */}
                     <div style={{ width: '60%', position: 'relative', display: 'flex', flexDirection: 'column' }}>
@@ -4027,7 +4731,6 @@
                         </div>
                       ) : (
                         <div className="flex-1 flex flex-col bg-gray-50 rounded p-1 no-print">
-                          <div style={{ fontSize: '9px' }} className="text-gray-600 font-semibold mb-1">Diagram 1</div>
                           <input
                             type="file"
                             accept="image/*"
@@ -4087,7 +4790,6 @@
                         </div>
                       ) : (
                         <div className="flex-1 flex flex-col bg-gray-50 rounded p-1 no-print">
-                          <div style={{ fontSize: '9px' }} className="text-gray-600 font-semibold mb-1">Diagram 2</div>
                           <input
                             type="file"
                             accept="image/*"
@@ -4147,7 +4849,6 @@
                         </div>
                       ) : (
                         <div className="flex-1 flex flex-col bg-gray-50 rounded p-1 no-print">
-                          <div style={{ fontSize: '9px' }} className="text-gray-600 font-semibold mb-1">Diagram 3</div>
                           <input
                             type="file"
                             accept="image/*"
@@ -4196,25 +4897,29 @@
                 </div>
                 
                 {/* MSHSL Boys Hockey Logo */}
-                <div style={{ textAlign: 'center', marginTop: '8px', marginBottom: '4px' }}>
+                <div style={{ textAlign: 'center', marginTop: '8px', marginBottom: '4px', display: 'flex', justifyContent: 'center' }}>
                   <img 
                     src="https://cdn2.sportngin.com/attachments/league/c4e7-208998629/MSHSLboyshockey_large_square.png" 
                     alt="MSHSL Boys Hockey" 
-                    style={{ width: '0.5in', height: '0.5in', objectFit: 'contain' }}
+                    style={{ width: '0.625in', height: '0.625in', objectFit: 'contain', display: 'block', margin: '0 auto' }}
                   />
                 </div>
                 
                 {/* Creator Credit - Page 2 */}
-                <div style={{ textAlign: 'center', fontSize: '8px', color: '#666', marginTop: '4px', paddingTop: '2px', paddingBottom: '2px' }}>
+                <div style={{ textAlign: 'center', fontSize: '10px', color: '#000000', marginTop: '4px', paddingTop: '2px', paddingBottom: '2px' }}>
                   Created exclusively for the {myTeamData.teamName} {myTeamData.nickname} by Legacy Line Charts - legacylinecharts@gmail.com - © Legacy Line Charts
                 </div>
               </div>
 
               {/* Print Styles */}
               <style>{`
+                .print-only { display: none; }
                 @media print {
                   .no-print {
                     display: none !important;
+                  }
+                  .print-only {
+                    display: block !important;
                   }
                   
                   .placeholder-print-hide::placeholder {
