@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v17.25</title>
+    <title>Legacy Line Charts v18.0</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -994,7 +994,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '17.25',
+                version: '18.0',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -4263,7 +4263,7 @@
                     backgroundColor: `${myTeamSetup.colors.primary}15`,
                     border: `2px solid ${myTeamSetup.colors.primary}`
                   }}>
-                    <span style={{ fontSize: '12px' }} className="font-bold">Student Manager(s): </span>
+                    <span style={{ fontSize: '12px' }} className="font-bold">Student Manager(s):&nbsp;</span>
                     <input
                       type="text"
                       value={myTeamData.studentManager}
@@ -4274,7 +4274,7 @@
                     />
                   </div>
                   <div className="bg-red-50 border-2 border-red-400 rounded px-2 py-1 flex items-center">
-                    <span style={{ fontSize: '12px' }} className="font-bold">Injured/Illness: </span>
+                    <span style={{ fontSize: '12px' }} className="font-bold">Injured/Illness:&nbsp;</span>
                     <input
                       type="text"
                       value={myTeamData.injuries || ''}
