@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v20.9</title>
+    <title>Legacy Line Charts v20.10</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1008,7 +1008,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '20.9',
+                version: '20.10',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -5046,10 +5046,10 @@
                     const img = diagramImages[imgKey];
                     const note = diagramImages[noteKey] || '';
                     return (
-                      <div style={{ width, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                      <div style={{ width, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
                         {img ? (
-                          <div className="relative w-full flex-1" style={{ minHeight: 0, overflow: 'hidden' }}>
-                            <img src={img} alt="Diagram" style={{ width: '100%', height: 'auto', maxHeight: '100%', objectFit: 'contain', display: 'block' }} />
+                          <div className="relative w-full flex-1 diagram-col-inner" style={{ minHeight: 0, overflow: 'hidden' }}>
+                            <img src={img} alt="Diagram" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
                             <button
                               onClick={() => setDiagramImages({...diagramImages, [imgKey]: null})}
                               className="no-print absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600"
@@ -5207,20 +5207,27 @@
                     overflow: hidden;
                   }
 
-                  /* Diagram section — capped so footer always shows */
+                  /* Diagram section — fills all remaining space above footer */
+                  .print-page-2 {
+                    height: 10.375in !important;
+                  }
+
                   .print-page-2 .diagram-section {
-                    max-height: 2.4in !important;
+                    flex: 1 1 0% !important;
                     min-height: 0 !important;
                     overflow: hidden !important;
-                    flex-shrink: 1 !important;
-                    flex-grow: 0 !important;
+                  }
+
+                  .print-page-2 .diagram-section .diagram-col-inner {
+                    position: absolute !important;
+                    top: 0 !important; left: 0 !important;
+                    right: 0 !important; bottom: 0 !important;
+                    overflow: hidden !important;
                   }
 
                   .print-page-2 .diagram-section img {
-                    max-height: 2.3in !important;
-                    max-width: 100% !important;
-                    width: auto !important;
-                    height: auto !important;
+                    width: 100% !important;
+                    height: 100% !important;
                     object-fit: contain !important;
                     display: block !important;
                   }
