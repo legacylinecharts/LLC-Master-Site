@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v20.7</title>
+    <title>Legacy Line Charts v20.9</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1008,7 +1008,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '20.7',
+                version: '20.9',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -5049,7 +5049,7 @@
                       <div style={{ width, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                         {img ? (
                           <div className="relative w-full flex-1" style={{ minHeight: 0, overflow: 'hidden' }}>
-                            <img src={img} alt="Diagram" style={{ width: '100%', height: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }} />
+                            <img src={img} alt="Diagram" style={{ width: '100%', height: 'auto', maxHeight: '100%', objectFit: 'contain', display: 'block' }} />
                             <button
                               onClick={() => setDiagramImages({...diagramImages, [imgKey]: null})}
                               className="no-print absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600"
@@ -5207,18 +5207,22 @@
                     overflow: hidden;
                   }
 
-                  /* Diagram section — must not overflow into footer */
+                  /* Diagram section — capped so footer always shows */
                   .print-page-2 .diagram-section {
-                    flex-shrink: 1 !important;
+                    max-height: 2.4in !important;
+                    min-height: 0 !important;
                     overflow: hidden !important;
-                    max-height: 2.2in !important;
+                    flex-shrink: 1 !important;
+                    flex-grow: 0 !important;
                   }
 
                   .print-page-2 .diagram-section img {
-                    max-height: 100% !important;
+                    max-height: 2.3in !important;
+                    max-width: 100% !important;
                     width: auto !important;
-                    height: 100% !important;
+                    height: auto !important;
                     object-fit: contain !important;
+                    display: block !important;
                   }
                 }
                 
