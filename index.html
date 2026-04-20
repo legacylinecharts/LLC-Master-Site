@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v20.6</title>
+    <title>Legacy Line Charts v20.7</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1008,7 +1008,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '20.6',
+                version: '20.7',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -5100,7 +5100,7 @@
                   };
 
                   return (
-                    <div className="mt-2" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minHeight: 0 }}>
+                    <div className="mt-2 diagram-section" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minHeight: 0 }}>
                       {/* Layout selector — no-print */}
                       <div className="no-print mb-1" style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
                         <span style={{ fontSize: '9px', color: '#666', marginRight: '2px' }}>Layout:</span>
@@ -5205,6 +5205,20 @@
                   .print-page-2 > div:last-child {
                     flex-shrink: 1;
                     overflow: hidden;
+                  }
+
+                  /* Diagram section — must not overflow into footer */
+                  .print-page-2 .diagram-section {
+                    flex-shrink: 1 !important;
+                    overflow: hidden !important;
+                    max-height: 2.2in !important;
+                  }
+
+                  .print-page-2 .diagram-section img {
+                    max-height: 100% !important;
+                    width: auto !important;
+                    height: 100% !important;
+                    object-fit: contain !important;
                   }
                 }
                 
