@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v20.5</title>
+    <title>Legacy Line Charts v20.6</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1008,7 +1008,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '20.5',
+                version: '20.6',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -3042,7 +3042,7 @@
                         whiteSpace: 'nowrap',
                         overflow: 'hidden'
                       }}>
-                        <span>25-26: GP {stats.gp}</span>
+                        <span>{getSeasonYears().season1}: GP {stats.gp}</span>
                         <span>Pts.{stats.g}-{stats.a}--{stats.pts}</span>
                         {showPlusMinus && <span>+/- {formatPlusMinus(stats.plusMinus)}</span>}
                       </div>
@@ -3103,7 +3103,7 @@
                         whiteSpace: 'nowrap',
                         overflow: 'hidden'
                       }}>
-                        <span>25-26: MIN {goalieStats.min}</span>
+                        <span>{getSeasonYears().season1}: MIN {goalieStats.min}</span>
                         <span>GAA {goalieStats.gaa.toFixed(2)}</span>
                       </div>
                       
