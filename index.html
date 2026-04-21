@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v20.10</title>
+    <title>Legacy Line Charts v20.12</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1008,7 +1008,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '20.10',
+                version: '20.12',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -4194,7 +4194,7 @@
                       boxSizing: 'border-box'
                     }}>
                       {myTeamSetup.logo && (
-                        <img src={myTeamSetup.logo} alt="Team" className="object-contain" style={{ maxHeight: '77px', maxWidth: '100%' }} />
+                        <img src={myTeamSetup.logo} alt="Team" className="object-contain" style={{ maxHeight: '77px', backgroundColor: 'white', maxWidth: '100%', backgroundColor: 'white' }} />
                       )}
                     </div>
                     <div className="flex flex-col" style={{ overflow: 'hidden', minHeight: 0 }}>
@@ -4296,7 +4296,7 @@
                       boxSizing: 'border-box'
                     }}>
                       {opponentLogo && (
-                        <img src={opponentLogo} alt="Opponent" className="object-contain" style={{ maxHeight: '77px', maxWidth: '100%' }} />
+                        <img src={opponentLogo} alt="Opponent" className="object-contain" style={{ maxHeight: '77px', backgroundColor: 'white', maxWidth: '100%', backgroundColor: 'white' }} />
                       )}
                     </div>
                     <div className="flex flex-col" style={{ overflow: 'hidden', minHeight: 0 }}>
@@ -4673,7 +4673,7 @@
                           padding: '4px', flexShrink: 0
                         }}>
                           {opponentLogo && (
-                            <img src={opponentLogo} alt="Opp" style={{ maxHeight: '80px', width: '100%', objectFit: 'contain' }} />
+                            <img src={opponentLogo} alt="Opp" style={{ maxHeight: '80px', width: '100%', objectFit: 'contain', backgroundColor: 'white' }} />
                           )}
                         </div>
                         <div style={{ fontSize: 'clamp(12px, 1.4vw, 16px)', fontWeight: '900', color: oc, lineHeight: '1.1' }}>
@@ -5046,10 +5046,10 @@
                     const img = diagramImages[imgKey];
                     const note = diagramImages[noteKey] || '';
                     return (
-                      <div style={{ width, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
+                      <div style={{ width, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0, flexShrink: 0 }}>
                         {img ? (
                           <div className="relative w-full flex-1 diagram-col-inner" style={{ minHeight: 0, overflow: 'hidden' }}>
-                            <img src={img} alt="Diagram" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                            <img src={img} alt="Diagram" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', backgroundColor: 'white' }} />
                             <button
                               onClick={() => setDiagramImages({...diagramImages, [imgKey]: null})}
                               className="no-print absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600"
@@ -5139,7 +5139,7 @@
                     <img 
                       src="https://cdn2.sportngin.com/attachments/league/c4e7-208998629/MSHSLboyshockey_large_square.png" 
                       alt="MSHSL Boys Hockey" 
-                      style={{ width: '0.75in', height: '0.75in', objectFit: 'contain', display: 'block', margin: '0 auto' }}
+                      style={{ width: '0.75in', height: '0.75in', objectFit: 'contain', display: 'block', margin: '0 auto', backgroundColor: 'white' }}
                     />
                   </div>
                   
