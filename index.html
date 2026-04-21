@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v20.12</title>
+    <title>Legacy Line Charts v20.13</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1008,7 +1008,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '20.12',
+                version: '20.13',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -2831,7 +2831,7 @@
             const statFontSize = `${8 * fontScale}pt`;
             const nameFontSize = `${20 * fontScale}pt`;
             const infoFontSize = statFontSize;
-            const pronunciationFontSize = `${12.5 * fontScale}pt`;
+            const pronunciationFontSize = `${9 * fontScale}pt`;
             
             React.useEffect(() => {
               const resizeText = (element, maxSize, minSize = 8) => {
@@ -2876,7 +2876,7 @@
                 // Clear transform before measuring
                 pronunciationRef.current.style.transform = '';
                 // Only shrink if text WIDTH exceeds the frame — never shrink due to height
-                let fontSize = isPreview ? 10 * 0.3125 : 10;
+                let fontSize = isPreview ? 9 * 0.3125 : 9;
                 const minSize = isPreview ? 2.5 : 6;
                 pronunciationRef.current.style.fontSize = `${fontSize}pt`;
                 while (pronunciationRef.current.scrollWidth > pronunciationRef.current.offsetWidth && fontSize > minSize) {
