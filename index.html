@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v30.0</title>
+    <title>Legacy Line Charts v30.3</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1039,7 +1039,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '30.0',
+                version: '30.3',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -2961,7 +2961,12 @@
                   {/* Number — Jersey M54 with team colors + offset shadow */}
                   {(() => {
                     const { fill, outline } = getJerseyColors(myTeamSetup.colors.primary, myTeamSetup.colors.secondary);
-                    const isDouble = (player.number || '').toString().length >= 2;
+                    const numStr = String(player.number || '');
+                    const isDouble = numStr.length >= 2;
+                    const wideWith4 = isDouble && numStr.includes('4') && /[234568904]/.test(numStr.replace('4', ''));
+                    const spacing = !isDouble ? '0px' : wideWith4 ? '-1px' : (isPreview ? '0.6px' : '2px');
+                    const shadowPx = wideWith4 ? 2 : 3;
+                    const sp = isPreview ? shadowPx * 0.1 : shadowPx;
                     return (
                       <div
                         ref={numberRef}
@@ -2975,10 +2980,8 @@
                           color: fill,
                           WebkitTextStroke: `${isPreview ? '0.5px' : '1.5px'} ${outline}`,
                           paintOrder: 'stroke fill',
-                          textShadow: isPreview
-                            ? `${-0.3}px ${0.3}px 0 ${outline}, ${-0.6}px ${0.6}px 0 ${outline}, ${-0.9}px ${0.9}px 0 ${outline}`
-                            : `-1px 1px 0 ${outline}, -2px 2px 0 ${outline}, -3px 3px 0 ${outline}`,
-                          letterSpacing: isDouble ? (isPreview ? '0.6px' : '2px') : '0px'
+                          textShadow: `-${(sp*0.33).toFixed(1)}px ${(sp*0.33).toFixed(1)}px 0 ${outline}, -${(sp*0.67).toFixed(1)}px ${(sp*0.67).toFixed(1)}px 0 ${outline}, -${sp}px ${sp}px 0 ${outline}`,
+                          letterSpacing: spacing
                         }}
                       >
                         {player.number}
@@ -4238,7 +4241,7 @@
                       boxSizing: 'border-box'
                     }}>
                       {myTeamSetup.logo && (
-                        <img src={myTeamSetup.logo} alt="Team" className="object-contain" style={{ maxHeight: '77px', backgroundColor: 'white', maxWidth: '100%', backgroundColor: 'white' }} />
+                        <img src={myTeamSetup.logo} alt="Team" className="object-contain" style={{ maxHeight: '77px', maxWidth: '100%' }} />
                       )}
                     </div>
                     <div className="flex flex-col" style={{ overflow: 'hidden', minHeight: 0 }}>
@@ -4340,7 +4343,7 @@
                       boxSizing: 'border-box'
                     }}>
                       {opponentLogo && (
-                        <img src={opponentLogo} alt="Opponent" className="object-contain" style={{ maxHeight: '77px', backgroundColor: 'white', maxWidth: '100%', backgroundColor: 'white' }} />
+                        <img src={opponentLogo} alt="Opponent" className="object-contain" style={{ maxHeight: '77px', maxWidth: '100%' }} />
                       )}
                     </div>
                     <div className="flex flex-col" style={{ overflow: 'hidden', minHeight: 0 }}>
@@ -4717,7 +4720,7 @@
                           padding: '4px', flexShrink: 0
                         }}>
                           {opponentLogo && (
-                            <img src={opponentLogo} alt="Opp" style={{ maxHeight: '80px', width: '100%', objectFit: 'contain', backgroundColor: 'white' }} />
+                            <img src={opponentLogo} alt="Opp" style={{ maxHeight: '80px', width: '100%', objectFit: 'contain' }} />
                           )}
                         </div>
                         <div style={{ fontSize: 'clamp(12px, 1.4vw, 16px)', fontWeight: '900', color: oc, lineHeight: '1.1' }}>
