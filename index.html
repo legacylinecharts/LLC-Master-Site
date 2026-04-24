@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v30.3</title>
+    <title>Legacy Line Charts v30.7</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -603,6 +603,7 @@
           const [showExport, setShowExport] = useState(false);
           const [exportData, setExportData] = useState('');
           const [showHelp, setShowHelp] = useState(false);
+
           const [fwdSort, setFwdSort] = useState({ col: null, dir: 'desc' });
           const [defSort, setDefSort] = useState({ col: null, dir: 'desc' });
           const [goalieSort, setGoalieSort] = useState({ col: null, dir: 'desc' });
@@ -1039,7 +1040,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '30.3',
+                version: '30.7',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -3220,7 +3221,7 @@
             };
             
             return (
-              <div style={{ height: '85px' }}>
+              <div style={{ height: '85px', overflow: 'hidden', minWidth: 0, width: '100%' }}>
                 {showLabel && (
                   <div className="text-xs font-bold text-center mb-0" style={{ fontSize: '11px', marginBottom: '2px' }}>{label}</div>
                 )}
@@ -3229,7 +3230,7 @@
                   className={`cursor-pointer transition-colors ${
                     isTargeted ? 'border-2 border-dashed border-blue-500 bg-blue-50 rounded' : ''
                   }`}
-                  style={{ height: showLabel ? 'calc(100% - 20px)' : '100%' }}
+                  style={{ height: showLabel ? 'calc(100% - 20px)' : '100%', width: '100%', overflow: 'hidden' }}
                   title={player ? 'Click to remove from line' : 'Click to drop player here'}
                 >
                   {player ? (
@@ -4504,7 +4505,7 @@
                     <div className={`rounded p-0 border-2 ${colorClasses[lines.goalies.starterColor]}`}>
                       <div className="flex items-center gap-1">
                         <ColorPicker value={lines.goalies.starterColor} onChange={(c) => handleGoalieColorChange('starter', c)} />
-                        <div className="flex-1">
+                        <div className="flex-1" style={{ minWidth: 0 }}>
                           <LineSlot line="goalies" position="starter" label="Starter" showLabel={false} />
                         </div>
                       </div>
@@ -4525,7 +4526,7 @@
                     <div className={`rounded p-0 border-2 ${colorClasses[lines.goalies.backupColor]}`}>
                       <div className="flex items-center gap-1">
                         <ColorPicker value={lines.goalies.backupColor} onChange={(c) => handleGoalieColorChange('backup', c)} />
-                        <div className="flex-1">
+                        <div className="flex-1" style={{ minWidth: 0 }}>
                           <LineSlot line="goalies" position="backup" label="Backup" showLabel={false} />
                         </div>
                       </div>
