@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v30.14</title>
+    <title>Legacy Line Charts v40.3</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -339,6 +339,34 @@
           // Jersey number color helper
           // Returns { fill, outline } — darker color fills, lighter outlines
           // Ensures outline is visible against white card background
+          // Build a raster gradient data URL for the header background
+          // Using canvas → PNG bypasses PDF.js axial shading rendering bugs
+          const buildGradientDataURL = (leftColor, rightColor) => {
+            try {
+              const gc = document.createElement('canvas');
+              gc.width = 800; gc.height = 4;
+              const gctx = gc.getContext('2d');
+              const grad = gctx.createLinearGradient(0, 0, 800, 0);
+              grad.addColorStop(0,    leftColor);
+              grad.addColorStop(0.34, '#ffffff');
+              grad.addColorStop(0.66, '#ffffff');
+              grad.addColorStop(1,    rightColor);
+              gctx.fillStyle = grad;
+              gctx.fillRect(0, 0, 800, 4);
+              return gc.toDataURL('image/png');
+            } catch(e) { return null; }
+          };
+
+          // Blend a hex color toward white — used for smooth gradient stops
+          const blendToWhite = (hex, ratio) => {
+            const h = (hex || '#000000').replace('#','');
+            if (h.length !== 6) return '#ffffff';
+            const r = Math.round(parseInt(h.slice(0,2),16) + (255 - parseInt(h.slice(0,2),16)) * ratio);
+            const g = Math.round(parseInt(h.slice(2,4),16) + (255 - parseInt(h.slice(2,4),16)) * ratio);
+            const b = Math.round(parseInt(h.slice(4,6),16) + (255 - parseInt(h.slice(4,6),16)) * ratio);
+            return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+          };
+
           const getJerseyColors = (primary, secondary) => {
             const brightness = (hex) => {
               const h = (hex || '#000').replace('#','');
@@ -1045,7 +1073,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '30.14',
+                version: '40.3',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -3868,54 +3896,80 @@
                                 if (!file) return;
                                 setShareGenerating(true);
                                 try {
+                                  // CloudConvert: server-side PDF→PNG (perfect gradient rendering)
+                                  const CLOUDCONVERT_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiNTQzMTljYWI0NmUyNzU0NDZlZTljM2M2ZTA3Mzc3YWY1Mjg3MDQxZDQ0ODJiOTlkNzY4OGZhNDlmYmIxN2NjZGVmY2FiZjA5MGVhNGMxY2IiLCJpYXQiOjE3NzcxNzg4NDIuODA3MDc5LCJuYmYiOjE3NzcxNzg4NDIuODA3MDgsImV4cCI6NDkzMjg1MjQ0Mi44MDE3NTQsInN1YiI6Ijc1Mjg0MjI5Iiwic2NvcGVzIjpbInRhc2sucmVhZCIsInRhc2sud3JpdGUiXX0.aGCzrfeHvT6r93KxSB1zXOp8tr9Asadfs9Vw2FxGx6QY0TwfCgmoo-53oOBcL75httP8KzfRermEAMJJWeTymeVtpRvBhymHhQPx0upX3uQjSzg69h1tDZFZpVLSimtHKUef0oMcoAfokgeG5guQn44oezZdiSbILKQ8Gy3XkNwkz3THFAV1Njr_jAKPNbw8vElRYzmf_Oe-0HQAKHlJaPTdl-VKh2r9m_Mrf4iuX7IUhdwanp4hGq2xUmGFCOZgkqxPRC-mX6gahoVkOQAxCyojRD4P4t4hZrGGa8QNBUto_qmg9YFUAr18-MIRmBMO4AIDo0Lp8SmIdxCf3GlCmjTFxmbv5IycnKB_nwRgVMW2zJ-p9OrfzW92byPcM8CZh_9tYjBHh37ux4XSUoGSF2DM8R4XkvObxmin7tUuQrfjfF9xaFer8XQN-7etmJdz9WBVJsuFi4W5ZhC4fHKT-8rSqBOG5KQq8w9h2ZakH37Pu-mYOL7buYalwraqEMbY3XZt7-MXhLtJxMSTVNG64FUH-4giTaEbI48yok7cfa79A9j4VRkaYtGtAioyI8WjnvjiHUFcevGl_R4nbET24l2jigNqTcV6ouomN9rlVw7VufuH6zAygrkpDenWjoIFNmkpgks_ACXUECUmb2Ok-VZgFxWdnlSaQ-ym_YdIuB4';
+
+                                  // Convert PDF file to base64
                                   const arrayBuffer = await file.arrayBuffer();
-                                  const pdfData = new Uint8Array(arrayBuffer);
-
-                                  const pdfjsLib = window.pdfjsLib;
-                                  pdfjsLib.GlobalWorkerOptions.workerSrc =
-                                    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.worker.min.js';
-
-                                  const pdfDoc = await pdfjsLib.getDocument({ data: pdfData }).promise;
-                                  const pdfPage = await pdfDoc.getPage(1);
-
-                                  // scale=3 → 216dpi — reduced from 4 to avoid PDF.js color artifacts
-                                  const viewport = pdfPage.getViewport({ scale: 3 });
-                                  const renderCanvas = document.createElement('canvas');
-                                  renderCanvas.width = viewport.width;
-                                  renderCanvas.height = viewport.height;
-
-                                  await pdfPage.render({
-                                    canvasContext: renderCanvas.getContext('2d'),
-                                    viewport
-                                  }).promise;
-
-                                  // Post-process: neutralize pale pink PDF.js rendering artifacts
-                                  // These appear as light pinkish pixels on card borders at high scale.
-                                  // Algorithm targets only low-saturation pinkish light pixels,
-                                  // preserving vivid team colors (orange, red, green, etc.)
-                                  const ctx = renderCanvas.getContext('2d');
-                                  const imageData = ctx.getImageData(0, 0, renderCanvas.width, renderCanvas.height);
-                                  const px = imageData.data;
-                                  for (let i = 0; i < px.length; i += 4) {
-                                    const r = px[i], g = px[i+1], b = px[i+2];
-                                    const rDom = r - Math.max(g, b);  // how much R leads
-                                    const maxDiff = Math.max(r,g,b) - Math.min(r,g,b);  // saturation proxy
-                                    if (
-                                      r > 160 && g > 130 && b > 130 &&  // light color
-                                      rDom > 8 && rDom < 70 &&          // R leads slightly (pink, not vivid red)
-                                      maxDiff < 80 &&                    // low saturation (not vivid team color)
-                                      Math.abs(g - b) < 40              // G and B similar (pink not orange)
-                                    ) {
-                                      const gray = Math.round(r * 0.299 + g * 0.587 + b * 0.114);
-                                      px[i] = gray; px[i+1] = gray; px[i+2] = gray;
-                                    }
+                                  // Chunked base64 encoding — avoids call stack overflow on large PDFs
+                                  const uint8Array = new Uint8Array(arrayBuffer);
+                                  let binary = '';
+                                  const chunkSize = 8192;
+                                  for (let i = 0; i < uint8Array.length; i += chunkSize) {
+                                    binary += String.fromCharCode(...uint8Array.subarray(i, i + chunkSize));
                                   }
-                                  ctx.putImageData(imageData, 0, 0);
+                                  const base64Pdf = btoa(binary);
 
-                                  setShareImageData(renderCanvas.toDataURL('image/png'));
+                                  // Step 1: Create job — import base64, convert page 1 to PNG at 216dpi, export URL
+                                  const jobResp = await fetch('https://api.cloudconvert.com/v2/jobs', {
+                                    method: 'POST',
+                                    headers: {
+                                      'Authorization': `Bearer ${CLOUDCONVERT_KEY}`,
+                                      'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                      tasks: {
+                                        'import-pdf': {
+                                          operation: 'import/base64',
+                                          file: base64Pdf,
+                                          filename: 'gamesheet.pdf'
+                                        },
+                                        'convert-png': {
+                                          operation: 'convert',
+                                          input: 'import-pdf',
+                                          output_format: 'png',
+                                          pages: '1',
+                                          density: 216
+                                        },
+                                        'export-png': {
+                                          operation: 'export/url',
+                                          input: 'convert-png'
+                                        }
+                                      }
+                                    })
+                                  });
+
+                                  if (!jobResp.ok) throw new Error('CloudConvert job creation failed');
+                                  const jobData = await jobResp.json();
+                                  const jobId = jobData.data.id;
+
+                                  // Step 2: Wait for job completion (sync endpoint)
+                                  const syncResp = await fetch(`https://sync.api.cloudconvert.com/v2/jobs/${jobId}`, {
+                                    headers: { 'Authorization': `Bearer ${CLOUDCONVERT_KEY}` }
+                                  });
+
+                                  if (!syncResp.ok) throw new Error('CloudConvert sync failed');
+                                  const syncData = await syncResp.json();
+
+                                  // Step 3: Get export URL from finished tasks
+                                  const exportTask = syncData.data.tasks.find(t => t.operation === 'export/url' && t.status === 'finished');
+                                  if (!exportTask || !exportTask.result?.files?.[0]?.url) throw new Error('No export URL found');
+
+                                  const pngUrl = exportTask.result.files[0].url;
+
+                                  // Step 4: Fetch PNG and convert to data URL
+                                  const pngResp = await fetch(pngUrl);
+                                  const pngBlob = await pngResp.blob();
+                                  const pngDataUrl = await new Promise(resolve => {
+                                    const reader = new FileReader();
+                                    reader.onload = () => resolve(reader.result);
+                                    reader.readAsDataURL(pngBlob);
+                                  });
+
+                                  setShareImageData(pngDataUrl);
                                 } catch(err) {
                                   console.error('PDF render error:', err);
-                                  alert('Could not read that PDF. Make sure you\'re selecting your saved game sheet PDF.');
+                                  alert('CloudConvert error: ' + err.message + '. Please try again or check your internet connection.');
                                 } finally {
                                   setShareGenerating(false);
                                 }
@@ -4183,7 +4237,7 @@
                 <>
                 {/* New 7-Column Header */}
                 <div className="rounded-lg overflow-hidden mb-0" style={{ 
-                  background: `linear-gradient(to right, ${myTeamSetup.colors.secondary} 0%, white 34%, white 66%, ${opponentColors.secondary} 100%)`,
+                  background: `linear-gradient(to right, ${myTeamSetup.colors.secondary} 0%, ${blendToWhite(myTeamSetup.colors.secondary, 0.5)} 17%, #ffffff 34%, #ffffff 66%, ${blendToWhite(opponentColors.secondary, 0.5)} 83%, ${opponentColors.secondary} 100%)`,
                   border: `2px solid black`,
                   display: 'grid',
                   gridTemplateColumns: '18fr 12fr 8fr 24fr 8fr 12fr 18fr',
@@ -4193,6 +4247,7 @@
                   padding: '2px',
                   overflow: 'hidden'
                 }}>
+
                   {/* C1 (18%) - MY TEAM LAST/NEXT GAMES */}
                   <div className="flex flex-col justify-between text-center" style={{ padding: '4px 2px 4px 4px', overflow: 'hidden', minHeight: 0 }}>
                     <div style={{ flex: '1 1 0', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
