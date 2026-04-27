@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v40.4</title>
+    <title>Legacy Line Charts v40.5</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1073,7 +1073,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '40.4',
+                version: '40.5',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -4025,31 +4025,26 @@
                               📋 Copy to Clipboard
                             </button>
 
-                            {/* Web Share (mobile) */}
+                            {/* Instagram */}
                             <button
                               onClick={async () => {
-                                if (!navigator.share) {
-                                  alert('Web Share not supported on this browser. Use Download PNG or Copy to Clipboard instead.');
-                                  return;
-                                }
+                                // Auto-copy PNG to clipboard then open Instagram
                                 try {
                                   const res = await fetch(shareImageData);
                                   const blob = await res.blob();
-                                  const myTeam = myTeamSetup.teamName || 'MyTeam';
-                                  const opp = opponentData.teamName ? `${opponentData.teamName} ${opponentData.nickname || ''}`.trim() : 'Opponent';
-                                  const file = new File([blob], `LLC_${myTeam}_vs_${opp}.png`.replace(/\s+/g,'_'), { type: 'image/png' });
-                                  await navigator.share({
-                                    title: `${myTeam} vs ${opp} — Game Sheet`,
-                                    text: `Scouting report powered by Legacy Line Charts 🏒`,
-                                    files: [file]
-                                  });
-                                } catch(err) {
-                                  if (err.name !== 'AbortError') alert('Share failed. Try Download PNG instead.');
+                                  await navigator.clipboard.write([
+                                    new ClipboardItem({ 'image/png': blob })
+                                  ]);
+                                } catch(e) {
+                                  // Clipboard write failed silently
                                 }
+                                window.open('https://www.instagram.com/', '_blank');
+                                setTimeout(() => alert('📋 Game sheet image copied to clipboard!\n\nIn Instagram, create a new post and paste (Ctrl+V) to attach your image.'), 400);
                               }}
-                              className="bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 font-semibold flex items-center justify-center gap-2"
+                              className="text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2"
+                              style={{ background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}
                             >
-                              📲 Share (Mobile)
+                              📸 Post to Instagram
                             </button>
 
                             {/* Twitter/X compose */}
