@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v40.6</title>
+    <title>Legacy Line Charts v40.7</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1073,7 +1073,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '40.6',
+                version: '40.7',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -3125,7 +3125,7 @@
                       }}>
                         <span>{getSeasonYears().season1}: GP {stats.gp}</span>
                         <span>Pts.{stats.g}-{stats.a}--{stats.pts}</span>
-                        {showPlusMinus && <span>+/- {formatPlusMinus(stats.plusMinus)}</span>}
+                        <span style={{ visibility: showPlusMinus ? 'visible' : 'hidden' }}>+/- {formatPlusMinus(stats.plusMinus)}</span>
                       </div>
                       
                       {/* Season Row 2: PIM, BS, Faceoff */}
@@ -3138,9 +3138,9 @@
                         whiteSpace: 'nowrap',
                         overflow: 'hidden'
                       }}>
-                        {showPIM && <span>PIM {stats.pim}</span>}
-                        {showBlockedShots && <span>BS {stats.bs || 0}</span>}
-                        {showFaceoffs && hasFaceoffs && <span>Faceoffs {faceoffPct}%</span>}
+                        <span style={{ visibility: showPIM ? 'visible' : 'hidden' }}>PIM {stats.pim}</span>
+                        <span style={{ visibility: showBlockedShots ? 'visible' : 'hidden' }}>BS {stats.bs || 0}</span>
+                        <span style={{ visibility: (showFaceoffs && hasFaceoffs) ? 'visible' : 'hidden' }}>Faceoffs {faceoffPct}%</span>
                       </div>
                       
                       {/* Career Row 1: GP, Pts, +/- */}
@@ -3155,7 +3155,7 @@
                       }}>
                         <span>Career: GP {careerStats.gp}</span>
                         <span>Pts.{careerStats.g}-{careerStats.a}--{careerStats.pts}</span>
-                        {showPlusMinus && <span>+/- {formatPlusMinus(careerStats.plusMinus)}</span>}
+                        <span style={{ visibility: showPlusMinus ? 'visible' : 'hidden' }}>+/- {formatPlusMinus(careerStats.plusMinus)}</span>
                       </div>
                       
                       {/* Career Row 2: PIM, BS, Faceoff */}
@@ -3168,9 +3168,9 @@
                         whiteSpace: 'nowrap',
                         overflow: 'hidden'
                       }}>
-                        {showPIM && <span>PIM {careerStats.pim || 0}</span>}
-                        {showBlockedShots && <span>BS {careerStats.bs || 0}</span>}
-                        {showFaceoffs && parseFloat(careerStats.faceoffPct) > 0 && <span>Faceoffs {Math.round(parseFloat(careerStats.faceoffPct))}%</span>}
+                        <span style={{ visibility: showPIM ? 'visible' : 'hidden' }}>PIM {careerStats.pim || 0}</span>
+                        <span style={{ visibility: showBlockedShots ? 'visible' : 'hidden' }}>BS {careerStats.bs || 0}</span>
+                        <span style={{ visibility: (showFaceoffs && parseFloat(careerStats.faceoffPct) > 0) ? 'visible' : 'hidden' }}>Faceoffs {Math.round(parseFloat(careerStats.faceoffPct))}%</span>
                       </div>
                     </>
                   ) : (
