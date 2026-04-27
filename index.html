@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v40.3</title>
+    <title>Legacy Line Charts v40.4</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1073,7 +1073,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '40.3',
+                version: '40.4',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -4054,12 +4054,23 @@
 
                             {/* Twitter/X compose */}
                             <button
-                              onClick={() => {
+                              onClick={async () => {
+                                // Auto-copy PNG to clipboard before opening Twitter
+                                try {
+                                  const dataUrl = shareImageData;
+                                  const res = await fetch(dataUrl);
+                                  const blob = await res.blob();
+                                  await navigator.clipboard.write([
+                                    new ClipboardItem({ 'image/png': blob })
+                                  ]);
+                                } catch(e) {
+                                  // Clipboard write failed silently — user can still paste manually
+                                }
                                 const myTeam = myTeamSetup.teamName || 'My Team';
                                 const opp = opponentData.teamName ? `${opponentData.teamName} ${opponentData.nickname || ''}`.trim() : 'Opponent';
                                 const text = encodeURIComponent(`Game prep ready! ${myTeam} vs ${opp} 🏒 #MSHSL #HockeyMN\n\nPowered by @LegacyLineCharts`);
                                 window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
-                                setTimeout(() => alert('💡 Tip: After Twitter opens, add your PNG by attaching the downloaded image to the tweet.'), 400);
+                                setTimeout(() => alert('📋 Game sheet image copied to clipboard!\n\nIn the Twitter composer, click the image icon or paste (Ctrl+V) to attach it to your tweet.'), 400);
                               }}
                               className="bg-black text-white py-3 rounded-lg hover:bg-gray-900 font-semibold flex items-center justify-center gap-2"
                             >
