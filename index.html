@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v40.7</title>
+    <title>Legacy Line Charts v40.8</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1049,10 +1049,14 @@
               seasonStartYear = currentYear - 2;
             }
             
+            const short = (y) => `'${String(y).slice(2)}-'${String(y+1).slice(2)}`;
             return {
-              season1: `${seasonStartYear}-${seasonStartYear + 1}`,
-              season2: `${seasonStartYear - 1}-${seasonStartYear}`,
-              season3: `${seasonStartYear - 2}-${seasonStartYear - 1}`
+              season1: short(seasonStartYear),
+              season2: short(seasonStartYear - 1),
+              season3: short(seasonStartYear - 2),
+              season1Full: `${seasonStartYear}-${seasonStartYear + 1}`,
+              season2Full: `${seasonStartYear - 1}-${seasonStartYear}`,
+              season3Full: `${seasonStartYear - 2}-${seasonStartYear - 1}`
             };
           };
 
@@ -1073,7 +1077,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '40.7',
+                version: '40.8',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -3123,7 +3127,7 @@
                         whiteSpace: 'nowrap',
                         overflow: 'hidden'
                       }}>
-                        <span>{getSeasonYears().season1}: GP {stats.gp}</span>
+                        <span>{getSeasonYears().season1}: GP{stats.gp}</span>
                         <span>Pts.{stats.g}-{stats.a}--{stats.pts}</span>
                         <span style={{ visibility: showPlusMinus ? 'visible' : 'hidden' }}>+/- {formatPlusMinus(stats.plusMinus)}</span>
                       </div>
@@ -3153,7 +3157,7 @@
                         whiteSpace: 'nowrap',
                         overflow: 'hidden'
                       }}>
-                        <span>Career: GP {careerStats.gp}</span>
+                        <span>Career: GP{careerStats.gp}</span>
                         <span>Pts.{careerStats.g}-{careerStats.a}--{careerStats.pts}</span>
                         <span style={{ visibility: showPlusMinus ? 'visible' : 'hidden' }}>+/- {formatPlusMinus(careerStats.plusMinus)}</span>
                       </div>
@@ -3383,9 +3387,9 @@
                         <div className="space-y-3">
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <label className="text-sm font-semibold">{getSeasonYears().season1} Season Legacy Final Player Stats</label>
+                              <label className="text-sm font-semibold">{getSeasonYears().season1Full} Season Legacy Final Player Stats</label>
                               <button 
-                                onClick={() => openHelp('careerStats', getSeasonYears().season1)}
+                                onClick={() => openHelp('careerStats', getSeasonYears().season1Full)}
                                 className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
                               >
                                 ❓ Help
@@ -3394,7 +3398,7 @@
                             <textarea
                               value={careerStatsImport.lastSeason}
                               onChange={(e) => setCareerStatsImport({...careerStatsImport, lastSeason: e.target.value})}
-                              placeholder={`Paste player stats from ${getSeasonYears().season1} season...`}
+                              placeholder={`Paste player stats from ${getSeasonYears().season1Full} season...`}
                               className="w-full border rounded px-3 py-2 font-mono text-xs"
                               rows="3"
                             />
@@ -3402,9 +3406,9 @@
                           
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <label className="text-sm font-semibold">{getSeasonYears().season2} Season Legacy Final Player Stats</label>
+                              <label className="text-sm font-semibold">{getSeasonYears().season2Full} Season Legacy Final Player Stats</label>
                               <button 
-                                onClick={() => openHelp('careerStats', getSeasonYears().season2)}
+                                onClick={() => openHelp('careerStats', getSeasonYears().season2Full)}
                                 className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
                               >
                                 ❓ Help
@@ -3413,7 +3417,7 @@
                             <textarea
                               value={careerStatsImport.twoSeasonsAgo}
                               onChange={(e) => setCareerStatsImport({...careerStatsImport, twoSeasonsAgo: e.target.value})}
-                              placeholder={`Paste player stats from ${getSeasonYears().season2} season...`}
+                              placeholder={`Paste player stats from ${getSeasonYears().season2Full} season...`}
                               className="w-full border rounded px-3 py-2 font-mono text-xs"
                               rows="3"
                             />
