@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v40.5</title>
+    <title>Legacy Line Charts v40.6</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1073,7 +1073,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '40.5',
+                version: '40.6',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -4028,18 +4028,17 @@
                             {/* Instagram */}
                             <button
                               onClick={async () => {
-                                // Auto-copy PNG to clipboard then open Instagram
+                                // Download PNG then open Instagram
                                 try {
-                                  const res = await fetch(shareImageData);
-                                  const blob = await res.blob();
-                                  await navigator.clipboard.write([
-                                    new ClipboardItem({ 'image/png': blob })
-                                  ]);
-                                } catch(e) {
-                                  // Clipboard write failed silently
-                                }
+                                  const a = document.createElement('a');
+                                  a.href = shareImageData;
+                                  const myTeam = myTeamSetup.teamName || 'MyTeam';
+                                  const opp = opponentData.teamName ? `${opponentData.teamName} ${opponentData.nickname || ''}`.trim() : 'Opponent';
+                                  a.download = `LLC_${myTeam}_vs_${opp}.png`.replace(/\s+/g, '_');
+                                  a.click();
+                                } catch(e) {}
                                 window.open('https://www.instagram.com/', '_blank');
-                                setTimeout(() => alert('📋 Game sheet image copied to clipboard!\n\nIn Instagram, create a new post and paste (Ctrl+V) to attach your image.'), 400);
+                                setTimeout(() => alert('📥 Game sheet downloaded!\n\nIn Instagram, create a new post and upload the downloaded PNG file.'), 400);
                               }}
                               className="text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2"
                               style={{ background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}
