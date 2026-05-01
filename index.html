@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v40.10</title>
+    <title>Legacy Line Charts v50.1</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -642,6 +642,16 @@
           const [showExport, setShowExport] = useState(false);
           const [exportData, setExportData] = useState('');
           const [showHelp, setShowHelp] = useState(false);
+          const [jerseySwapped, setJerseySwapped] = React.useState(() => {
+            try { return localStorage.getItem('llc_jerseySwapped') === 'true'; } catch(e) { return false; }
+          });
+          const toggleJerseySwap = () => {
+            setJerseySwapped(prev => {
+              const next = !prev;
+              try { localStorage.setItem('llc_jerseySwapped', String(next)); } catch(e) {}
+              return next;
+            });
+          };
 
           const [fwdSort, setFwdSort] = useState({ col: null, dir: 'desc' });
           const [defSort, setDefSort] = useState({ col: null, dir: 'desc' });
@@ -1083,7 +1093,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '40.10',
+                version: '50.1',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
@@ -3004,7 +3014,9 @@
                   }} />
                   {/* Number — Jersey M54 with team colors + offset shadow */}
                   {(() => {
-                    const { fill, outline } = getJerseyColors(myTeamSetup.colors.primary, myTeamSetup.colors.secondary, myTeamSetup.colors.jerseyFill, myTeamSetup.colors.jerseyOutline);
+                    const { fill: baseFill, outline: baseOutline } = getJerseyColors(myTeamSetup.colors.primary, myTeamSetup.colors.secondary, myTeamSetup.colors.jerseyFill, myTeamSetup.colors.jerseyOutline);
+                    const fill = jerseySwapped ? baseOutline : baseFill;
+                    const outline = jerseySwapped ? baseFill : baseOutline;
                     const numStr = String(player.number || '');
                     const isDouble = numStr.length >= 2;
                     const wideWith4 = isDouble && numStr.includes('4') && /[234568904]/.test(numStr.replace('4', ''));
@@ -3393,9 +3405,9 @@
                         <div className="space-y-3">
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <label className="text-sm font-semibold">{getSeasonYears().season1Full} Season Legacy Final Player Stats</label>
+                              <label className="text-sm font-semibold">{getSeasonYears().season1} Season Legacy Final Player Stats</label>
                               <button 
-                                onClick={() => openHelp('careerStats', getSeasonYears().season1Full)}
+                                onClick={() => openHelp('careerStats', getSeasonYears().season1)}
                                 className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
                               >
                                 ❓ Help
@@ -3404,7 +3416,7 @@
                             <textarea
                               value={careerStatsImport.lastSeason}
                               onChange={(e) => setCareerStatsImport({...careerStatsImport, lastSeason: e.target.value})}
-                              placeholder={`Paste player stats from ${getSeasonYears().season1Full} season...`}
+                              placeholder={`Paste player stats from ${getSeasonYears().season1} season...`}
                               className="w-full border rounded px-3 py-2 font-mono text-xs"
                               rows="3"
                             />
@@ -3412,9 +3424,9 @@
                           
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <label className="text-sm font-semibold">{getSeasonYears().season2Full} Season Legacy Final Player Stats</label>
+                              <label className="text-sm font-semibold">{getSeasonYears().season2} Season Legacy Final Player Stats</label>
                               <button 
-                                onClick={() => openHelp('careerStats', getSeasonYears().season2Full)}
+                                onClick={() => openHelp('careerStats', getSeasonYears().season2)}
                                 className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
                               >
                                 ❓ Help
@@ -3423,7 +3435,7 @@
                             <textarea
                               value={careerStatsImport.twoSeasonsAgo}
                               onChange={(e) => setCareerStatsImport({...careerStatsImport, twoSeasonsAgo: e.target.value})}
-                              placeholder={`Paste player stats from ${getSeasonYears().season2Full} season...`}
+                              placeholder={`Paste player stats from ${getSeasonYears().season2} season...`}
                               className="w-full border rounded px-3 py-2 font-mono text-xs"
                               rows="3"
                             />
@@ -4518,7 +4530,32 @@
 
                 {/* Available Players */}
                 <div className="no-print bg-gray-100 rounded p-2 mb-1">
-                  <h2 className="text-sm font-bold mb-1">Available Players ({availablePlayers.length})</h2>
+                  <div className="no-print flex items-center gap-2 mb-1">
+                    <h2 className="text-sm font-bold">Available Players ({availablePlayers.length})</h2>
+                    {(() => {
+                      const { fill: btnFill, outline: btnOutline } = getJerseyColors(myTeamSetup.colors.primary, myTeamSetup.colors.secondary, myTeamSetup.colors.jerseyFill, myTeamSetup.colors.jerseyOutline);
+                      const bgColor = jerseySwapped ? btnFill : btnOutline;
+                      const textColor = jerseySwapped ? btnOutline : btnFill;
+                      return (
+                        <button
+                          onClick={toggleJerseySwap}
+                          style={{
+                            backgroundColor: bgColor,
+                            color: textColor,
+                            border: `2px solid ${textColor}`,
+                            fontSize: '10px',
+                            fontWeight: 'bold',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          Swap Jersey # Color
+                        </button>
+                      );
+                    })()}
+                  </div>
                   <div className="grid grid-cols-5 gap-2">
                     {availablePlayers.map(player => (
                       <PlayerCard key={player.id} player={player} source={{ roster: true }} isPreview={true} />
