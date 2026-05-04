@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v50.3</title>
+    <title>Legacy Line Charts v50.4</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1060,9 +1060,9 @@
             
             let seasonStartYear;
             if (currentMonth >= 4) {
-              seasonStartYear = currentYear - 1;
+              seasonStartYear = currentYear;
             } else {
-              seasonStartYear = currentYear - 2;
+              seasonStartYear = currentYear - 1;
             }
             
             const short = (y) => `'${String(y).slice(2)}-'${String(y+1).slice(2)}`;
@@ -1093,7 +1093,7 @@
             const exportObj = {
               _exportInfo: {
                 exportDate: new Date().toISOString(),
-                version: '50.3',
+                version: '50.4',
                 teamName: myTeamSetup.teamName,
                 description: 'Full team configuration for subscriber site build'
               },
