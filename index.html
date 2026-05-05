@@ -1064,7 +1064,10 @@
             } else {
               seasonStartYear = currentYear - 1;
             }
-            
+
+            // Completed seasons = last 3 finished seasons (used in career import labels)
+            const completedStartYear = currentMonth >= 4 ? currentYear - 1 : currentYear - 2;
+
             const short = (y) => `'${String(y).slice(2)}-'${String(y+1).slice(2)}`;
             return {
               season1: short(seasonStartYear),
@@ -1072,7 +1075,10 @@
               season3: short(seasonStartYear - 2),
               season1Full: `${seasonStartYear}-${seasonStartYear + 1}`,
               season2Full: `${seasonStartYear - 1}-${seasonStartYear}`,
-              season3Full: `${seasonStartYear - 2}-${seasonStartYear - 1}`
+              season3Full: `${seasonStartYear - 2}-${seasonStartYear - 1}`,
+              completedSeason1: short(completedStartYear),
+              completedSeason2: short(completedStartYear - 1),
+              completedSeason3: short(completedStartYear - 2)
             };
           };
 
@@ -3421,9 +3427,9 @@
                         <div className="space-y-3">
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <label className="text-sm font-semibold">{getSeasonYears().season1} Season Legacy Final Player Stats</label>
+                              <label className="text-sm font-semibold">{getSeasonYears().completedSeason1} Season Legacy Final Player Stats</label>
                               <button 
-                                onClick={() => openHelp('careerStats', getSeasonYears().season1)}
+                                onClick={() => openHelp('careerStats', getSeasonYears().completedSeason1)}
                                 className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
                               >
                                 ❓ Help
@@ -3432,7 +3438,7 @@
                             <textarea
                               value={careerStatsImport.lastSeason}
                               onChange={(e) => setCareerStatsImport({...careerStatsImport, lastSeason: e.target.value})}
-                              placeholder={`Paste player stats from ${getSeasonYears().season1} season...`}
+                              placeholder={`Paste player stats from ${getSeasonYears().completedSeason1} season...`}
                               className="w-full border rounded px-3 py-2 font-mono text-xs"
                               rows="3"
                             />
@@ -3440,9 +3446,9 @@
                           
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <label className="text-sm font-semibold">{getSeasonYears().season2} Season Legacy Final Player Stats</label>
+                              <label className="text-sm font-semibold">{getSeasonYears().completedSeason2} Season Legacy Final Player Stats</label>
                               <button 
-                                onClick={() => openHelp('careerStats', getSeasonYears().season2)}
+                                onClick={() => openHelp('careerStats', getSeasonYears().completedSeason2)}
                                 className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
                               >
                                 ❓ Help
@@ -3451,7 +3457,7 @@
                             <textarea
                               value={careerStatsImport.twoSeasonsAgo}
                               onChange={(e) => setCareerStatsImport({...careerStatsImport, twoSeasonsAgo: e.target.value})}
-                              placeholder={`Paste player stats from ${getSeasonYears().season2} season...`}
+                              placeholder={`Paste player stats from ${getSeasonYears().completedSeason2} season...`}
                               className="w-full border rounded px-3 py-2 font-mono text-xs"
                               rows="3"
                             />
