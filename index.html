@@ -3465,7 +3465,7 @@
                           
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <label className="text-sm font-semibold">{getSeasonYears().season3} Season Legacy Final Player Stats</label>
+                              <label className="text-sm font-semibold">{getSeasonYears().completedSeason3} Season Legacy Final Player Stats</label>
                               <button 
                                 onClick={() => openHelp('careerStats', getSeasonYears().season3)}
                                 className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
@@ -3476,7 +3476,7 @@
                             <textarea
                               value={careerStatsImport.threeSeasonsAgo}
                               onChange={(e) => setCareerStatsImport({...careerStatsImport, threeSeasonsAgo: e.target.value})}
-                              placeholder={`Paste player stats from ${getSeasonYears().season3} season...`}
+                              placeholder={`Paste player stats from ${getSeasonYears().completedSeason3} season...`}
                               className="w-full border rounded px-3 py-2 font-mono text-xs"
                               rows="3"
                             />
