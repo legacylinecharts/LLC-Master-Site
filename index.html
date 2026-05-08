@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v60.1</title>
+    <title>Legacy Line Charts v60.4</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -724,6 +724,7 @@
           const [importStep, setImportStep] = useState('myTeamHome');
           const [importText, setImportText] = useState('');
           const [safariDetected, setSafariDetected] = useState(false);
+          const [pasteAlert, setPasteAlert] = useState({ visible: false, message: '' });
           const [spreadsheetData, setSpreadsheetData] = useState([]);
           const [spreadsheetHeaders, setSpreadsheetHeaders] = useState([]);
           const [selectedPlayer, setSelectedPlayer] = useState(null);
@@ -1130,6 +1131,7 @@
             const completedStartYear = currentMonth >= 4 ? currentYear - 1 : currentYear - 2;
 
             const short = (y) => `'${String(y).slice(2)}-'${String(y+1).slice(2)}`;
+            const fmtFull = (y) => `${y}-${String(y+1).slice(-2)}`;
             return {
               season1: short(seasonStartYear),
               season2: short(seasonStartYear - 1),
@@ -1139,8 +1141,55 @@
               season3Full: `${seasonStartYear - 2}-${seasonStartYear - 1}`,
               completedSeason1: short(completedStartYear),
               completedSeason2: short(completedStartYear - 1),
-              completedSeason3: short(completedStartYear - 2)
+              completedSeason3: short(completedStartYear - 2),
+              currentSeasonFull: fmtFull(seasonStartYear),
+              career1Full: fmtFull(completedStartYear),
+              career2Full: fmtFull(completedStartYear - 1),
+              career3Full: fmtFull(completedStartYear - 2)
             };
+          };
+
+          // ── Paste Validation ─────────────────────────────────────────────────
+          const validatePaste = (text, type, expectedYearFull) => {
+            const countOccurrences = (str) => text.split(str).length - 1;
+            const has = (str) => text.includes(str);
+
+            let pageTypeOk = false;
+            let pageName = '';
+
+            if (type === 'home') {
+              pageTypeOk = has('Team Statistics');
+              pageName = 'Legacy Home';
+            } else if (type === 'roster') {
+              pageTypeOk = has('Players') && has('Staff');
+              pageName = 'Roster';
+            } else if (type === 'playerStats') {
+              pageTypeOk = countOccurrences('Player Stats') >= 2;
+              pageName = 'Player Stats';
+            } else if (type === 'teamStats') {
+              pageTypeOk = countOccurrences('Team Stats') >= 2;
+              pageName = 'Team Stats';
+            }
+
+            if (!pageTypeOk) {
+              return {
+                valid: false,
+                message: `That doesn't look like ${pageName} data. Please return to Legacy Hockey, select ${pageName} (${expectedYearFull}) from the navigation menu, then copy and paste the full page.`
+              };
+            }
+
+            if (!has(expectedYearFull)) {
+              const yearMatch = text.match(/20\d\d-\d\d/);
+              const detectedYear = yearMatch ? yearMatch[0] : null;
+              return {
+                valid: false,
+                message: detectedYear
+                  ? `That looks like ${detectedYear} ${pageName} — this field needs ${expectedYearFull} data. Please return to Legacy Hockey, select ${pageName}, and make sure ${expectedYearFull} is selected at the top before copying.`
+                  : `This field needs ${expectedYearFull} ${pageName} data. Please return to Legacy Hockey, select ${pageName}, and make sure ${expectedYearFull} is selected at the top before copying.`
+              };
+            }
+
+            return { valid: true };
           };
 
           // Export Team Configuration for subscriber builds
@@ -3488,15 +3537,32 @@
                           <div>
                             <div className="flex items-center justify-between mb-1">
                               <label className="text-sm font-semibold">{getSeasonYears().completedSeason1} Season Legacy Final Player Stats</label>
-                              <button 
-                                onClick={() => openHelp('careerStats', getSeasonYears().completedSeason1)}
-                                className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
-                              >
-                                ❓ Help
-                              </button>
+                              <div className="flex items-center gap-3">
+                                {careerStatsImport.lastSeason && (
+                                  <button
+                                    onClick={() => setCareerStatsImport({...careerStatsImport, lastSeason: ''})}
+                                    className="text-red-500 hover:text-red-700 text-xs font-semibold"
+                                  >
+                                    ✕ Clear
+                                  </button>
+                                )}
+                                <button 
+                                  onClick={() => openHelp('careerStats', getSeasonYears().completedSeason1)}
+                                  className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
+                                >
+                                  ❓ Help
+                                </button>
+                              </div>
                             </div>
                             <textarea
                               value={careerStatsImport.lastSeason}
+                              onPaste={(e) => {
+                                const text = e.clipboardData.getData('text');
+                                if (!text) return;
+                                const sy = getSeasonYears();
+                                const result = validatePaste(text, 'playerStats', sy.career1Full);
+                                if (!result.valid) setPasteAlert({ visible: true, message: result.message });
+                              }}
                               onChange={(e) => setCareerStatsImport({...careerStatsImport, lastSeason: e.target.value})}
                               placeholder={`Paste player stats from ${getSeasonYears().completedSeason1} season...`}
                               className="w-full border rounded px-3 py-2 font-mono text-xs"
@@ -3507,15 +3573,32 @@
                           <div>
                             <div className="flex items-center justify-between mb-1">
                               <label className="text-sm font-semibold">{getSeasonYears().completedSeason2} Season Legacy Final Player Stats</label>
-                              <button 
-                                onClick={() => openHelp('careerStats', getSeasonYears().completedSeason2)}
-                                className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
-                              >
-                                ❓ Help
-                              </button>
+                              <div className="flex items-center gap-3">
+                                {careerStatsImport.twoSeasonsAgo && (
+                                  <button
+                                    onClick={() => setCareerStatsImport({...careerStatsImport, twoSeasonsAgo: ''})}
+                                    className="text-red-500 hover:text-red-700 text-xs font-semibold"
+                                  >
+                                    ✕ Clear
+                                  </button>
+                                )}
+                                <button 
+                                  onClick={() => openHelp('careerStats', getSeasonYears().completedSeason2)}
+                                  className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
+                                >
+                                  ❓ Help
+                                </button>
+                              </div>
                             </div>
                             <textarea
                               value={careerStatsImport.twoSeasonsAgo}
+                              onPaste={(e) => {
+                                const text = e.clipboardData.getData('text');
+                                if (!text) return;
+                                const sy = getSeasonYears();
+                                const result = validatePaste(text, 'playerStats', sy.career2Full);
+                                if (!result.valid) setPasteAlert({ visible: true, message: result.message });
+                              }}
                               onChange={(e) => setCareerStatsImport({...careerStatsImport, twoSeasonsAgo: e.target.value})}
                               placeholder={`Paste player stats from ${getSeasonYears().completedSeason2} season...`}
                               className="w-full border rounded px-3 py-2 font-mono text-xs"
@@ -3526,15 +3609,32 @@
                           <div>
                             <div className="flex items-center justify-between mb-1">
                               <label className="text-sm font-semibold">{getSeasonYears().completedSeason3} Season Legacy Final Player Stats</label>
-                              <button 
-                                onClick={() => openHelp('careerStats', getSeasonYears().season3)}
-                                className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
-                              >
-                                ❓ Help
-                              </button>
+                              <div className="flex items-center gap-3">
+                                {careerStatsImport.threeSeasonsAgo && (
+                                  <button
+                                    onClick={() => setCareerStatsImport({...careerStatsImport, threeSeasonsAgo: ''})}
+                                    className="text-red-500 hover:text-red-700 text-xs font-semibold"
+                                  >
+                                    ✕ Clear
+                                  </button>
+                                )}
+                                <button 
+                                  onClick={() => openHelp('careerStats', getSeasonYears().season3)}
+                                  className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
+                                >
+                                  ❓ Help
+                                </button>
+                              </div>
                             </div>
                             <textarea
                               value={careerStatsImport.threeSeasonsAgo}
+                              onPaste={(e) => {
+                                const text = e.clipboardData.getData('text');
+                                if (!text) return;
+                                const sy = getSeasonYears();
+                                const result = validatePaste(text, 'playerStats', sy.career3Full);
+                                if (!result.valid) setPasteAlert({ visible: true, message: result.message });
+                              }}
                               onChange={(e) => setCareerStatsImport({...careerStatsImport, threeSeasonsAgo: e.target.value})}
                               placeholder={`Paste player stats from ${getSeasonYears().completedSeason3} season...`}
                               className="w-full border rounded px-3 py-2 font-mono text-xs"
@@ -3872,15 +3972,43 @@
                             <label className="text-sm font-semibold">
                               Paste content from {currentStepInfo?.label}
                             </label>
-                            <button 
-                              onClick={() => openHelp(importStep)}
-                              className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
-                            >
-                              ❓ Help
-                            </button>
+                            <div className="flex items-center gap-3">
+                              {importText && (
+                                <button
+                                  onClick={() => setImportText('')}
+                                  className="text-red-500 hover:text-red-700 text-xs font-semibold"
+                                >
+                                  ✕ Clear
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => openHelp(importStep)}
+                                className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
+                              >
+                                ❓ Help
+                              </button>
+                            </div>
                           </div>
                           <textarea
                             value={importText}
+                            onPaste={(e) => {
+                              const text = e.clipboardData.getData('text');
+                              if (!text) return;
+                              const stepTypeMap = {
+                                myTeamHome: 'home',
+                                myTeamRoster: 'roster',
+                                myTeamPlayerStats: 'playerStats',
+                                oppHome: 'home',
+                                oppRoster: 'roster',
+                                oppPlayerStats: 'playerStats',
+                                oppTeamStats: 'teamStats',
+                              };
+                              const type = stepTypeMap[importStep];
+                              if (!type) return;
+                              const sy = getSeasonYears();
+                              const result = validatePaste(text, type, sy.currentSeasonFull);
+                              if (!result.valid) setPasteAlert({ visible: true, message: result.message });
+                            }}
                             onChange={(e) => {
                               const text = e.target.value;
                               // Safari detection: unique markers in Safari paste output
@@ -4218,6 +4346,25 @@
                         Close
                       </button>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Paste Validation Alert */}
+              {pasteAlert.visible && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999]">
+                  <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4">
+                    <div className="flex items-center gap-3 mb-4">
+                      <span style={{ fontSize: '2rem' }}>⚠️</span>
+                      <h2 className="text-xl font-bold text-gray-800">Heads Up, Coach!</h2>
+                    </div>
+                    <p className="text-gray-700 text-sm leading-relaxed mb-6">{pasteAlert.message}</p>
+                    <button
+                      onClick={() => setPasteAlert({ visible: false, message: '' })}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-sm transition-colors"
+                    >
+                      Got It!
+                    </button>
                   </div>
                 </div>
               )}
