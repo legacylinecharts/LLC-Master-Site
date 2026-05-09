@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v60.4</title>
+    <title>Legacy Line Charts v60.5</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1130,6 +1130,10 @@
             // Completed seasons = last 3 finished seasons (used in career import labels)
             const completedStartYear = currentMonth >= 4 ? currentYear - 1 : currentYear - 2;
 
+            // Next game data import validation rolls Nov 1 (month >= 10)
+            // so coaches can use the app pre-season before new Legacy Hockey pages go live
+            const nextGameSeasonStartYear = currentMonth >= 10 ? currentYear : currentYear - 1;
+
             const short = (y) => `'${String(y).slice(2)}-'${String(y+1).slice(2)}`;
             const fmtFull = (y) => `${y}-${String(y+1).slice(-2)}`;
             return {
@@ -1143,6 +1147,7 @@
               completedSeason2: short(completedStartYear - 1),
               completedSeason3: short(completedStartYear - 2),
               currentSeasonFull: fmtFull(seasonStartYear),
+              nextGameSeasonFull: fmtFull(nextGameSeasonStartYear),
               career1Full: fmtFull(completedStartYear),
               career2Full: fmtFull(completedStartYear - 1),
               career3Full: fmtFull(completedStartYear - 2)
@@ -4006,7 +4011,7 @@
                               const type = stepTypeMap[importStep];
                               if (!type) return;
                               const sy = getSeasonYears();
-                              const result = validatePaste(text, type, sy.currentSeasonFull);
+                              const result = validatePaste(text, type, sy.nextGameSeasonFull);
                               if (!result.valid) setPasteAlert({ visible: true, message: result.message });
                             }}
                             onChange={(e) => {
