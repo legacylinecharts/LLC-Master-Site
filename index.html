@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v61.6</title>
+    <title>Legacy Line Charts v62.0</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
@@ -177,15 +177,18 @@
         // ============================================================
         // MSHSL TEAMS DATABASE
         // Complete database of MN + out-of-state hockey teams
-        // with logos and team colors — v60.0
+        // with logos and team colors — v60.0; v62.0 made this a `let` so the live Google Sheet
+        // fetch below can replace the whole object in-place when it arrives. This object stays
+        // as the baked-in fallback used when the sheet can't be fetched (offline, Google down,
+        // malformed response). Keep this snapshot roughly in sync with the sheet over time.
         // ============================================================
-        const MSHSL_TEAMS = {
+        let MSHSL_TEAMS = {
           "academy of holy angels stars": { name: "Academy of Holy Angels", nickname: "Stars", logo: "https://cdn2.sportngin.com/attachments/team/5dca-151689530/holy-angels-stars-hockey-_1__large_square.png", primaryColor: "#0000BA", secondaryColor: "#E39E1D" },
           "albert lea tigers": { name: "Albert Lea", nickname: "Tigers", logo: "https://cdn2.sportngin.com/attachments/team/c7d9-149891114/AlbertLea_large_square.png", primaryColor: "#0000BA", secondaryColor: "#CF2329" },
           "alexandria cardinals": { name: "Alexandria", nickname: "Cardinals", logo: "https://cdn3.sportngin.com/attachments/team/6b78-151624918/1alexandria-cardinals-hockey_large_square.png", primaryColor: "#000000", secondaryColor: "#CF2329" },
           "andover huskies": { name: "Andover", nickname: "Huskies", logo: "https://cdn4.sportngin.com/attachments/team/7f7f-151913518/andover-huskies-hockey-_1__large_square.png", primaryColor: "#000000", secondaryColor: "#C5B358" },
           "anoka tornadoes": { name: "Anoka", nickname: "Tornadoes", logo: "https://cdn2.sportngin.com/attachments/team/e252-151913899/anoka-hockey_large_square.png", primaryColor: "#441E20", secondaryColor: "#C0C0C0" },
-          "apple valley/burnsville thunder": { name: "Apple Valley/Burnsville", nickname: "Thunder", logo: "https://cdn2.sportngin.com/attachments/team/c82a-151937882/Apple_Valley_large_square_large_square_large_square.png", primaryColor: "#361E1F", secondaryColor: "#C0A686" },
+          "apple valley burnsville eagles": { name: "Apple Valley Burnsville", nickname: "Eagles", logo: "https://cdn2.sportngin.com/attachments/team/c82a-151937882/Apple_Valley_large_square_large_square_large_square.png", primaryColor: "#361E1F", secondaryColor: "#C0A686" },
           "austin packers": { name: "Austin", nickname: "Packers", logo: "https://cdn3.sportngin.com/attachments/team/2e29-149918958/activities_large_square.png", primaryColor: "#666666", secondaryColor: "#CC0000" },
           "bagley/fosston flyers": { name: "Bagley/Fosston", nickname: "Flyers", logo: "https://cdn2.sportngin.com/attachments/team/865e-151897558/749a11df0b4cadd99bf301e62816258a9ea4035esld08_BFGCHockey_store_large_square.png", primaryColor: "#56012B", secondaryColor: "#E39E1D" },
           "becker/big lake eagles": { name: "Becker/Big Lake", nickname: "Eagles", logo: "https://cdn3.sportngin.com/attachments/team/5c41-151867105/1becker-big-lake-eagles-hockey_large_square.png", primaryColor: "#666666", secondaryColor: "#0577FA" },
@@ -383,17 +386,101 @@
           "wi - wisconsin rapids red raiders": { name: "WI - Wisconsin Rapids", nickname: "Red Raiders", logo: "https://cdn2.sportngin.com/attachments/team/7410/1250/WR_hockey_2016__resize_6_large_square.jpg", primaryColor: "#000000", secondaryColor: "#CC0000" },
           "ont - fort frances muskie": { name: "ONT - Fort Frances", nickname: "Muskie", logo: "https://cdn1.sportngin.com/attachments/team/86ed-183242558/MuskiesLogo_large_square.png", primaryColor: "#003087", secondaryColor: "#C8A84B" }
         };
+
+        // ============================================================
+        // v62.0: LIVE TEAM DB — Google Sheets published CSV
+        // The sheet at the URL below is the source of truth for team
+        // name, mascot, colors, and logo URL. On page load the app
+        // fetches this CSV and replaces the MSHSL_TEAMS object above
+        // in-place. The baked-in MSHSL_TEAMS is used as a fallback
+        // when the fetch fails for any reason.
+        // ============================================================
+        const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS9f_dnbLuz_ssCdkcf1TX1MccYywmWMbY7xM5rcrpCqOrUMzWmf6b_vLRQvphj4w/pub?output=csv';
+
+        // Minimal CSV parser — handles quoted fields with embedded commas, escaped double-quotes ("")
+        // and both \n and \r\n line endings. Strips UTF-8 BOM if present.
+        const parseCsv = (text) => {
+          if (!text) return [];
+          if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+          const rows = [];
+          let i = 0, field = '', row = [], inQuotes = false;
+          while (i < text.length) {
+            const ch = text[i];
+            if (inQuotes) {
+              if (ch === '"') {
+                if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+                inQuotes = false; i++; continue;
+              }
+              field += ch; i++; continue;
+            }
+            if (ch === '"') { inQuotes = true; i++; continue; }
+            if (ch === ',') { row.push(field); field = ''; i++; continue; }
+            if (ch === '\n' || ch === '\r') {
+              row.push(field); rows.push(row); row = []; field = '';
+              if (ch === '\r' && text[i + 1] === '\n') i++;
+              i++; continue;
+            }
+            field += ch; i++;
+          }
+          if (field !== '' || row.length) { row.push(field); rows.push(row); }
+          return rows;
+        };
+
+        // Convert sheet rows (School, Mascot, Primary Color, Secondary Color, Logo URL) into the
+        // same shape as the baked-in MSHSL_TEAMS object: { 'name nickname': { name, nickname, logo, primaryColor, secondaryColor } }.
+        // Skips the header row and any blank rows. Trims every cell. Returns {} on obviously broken input.
+        const csvToTeamsDb = (csvText) => {
+          const rows = parseCsv(csvText);
+          if (rows.length < 2) return {};
+          const [header, ...data] = rows;
+          const result = {};
+          for (const row of data) {
+            const school = (row[0] || '').trim();
+            if (!school) continue;
+            const mascot = (row[1] || '').trim();
+            const primary = (row[2] || '').trim() || '#000000';
+            const secondary = (row[3] || '').trim() || '#000000';
+            const logo = (row[4] || '').trim();
+            const key = `${school} ${mascot}`.trim().toLowerCase();
+            result[key] = { name: school, nickname: mascot, logo, primaryColor: primary, secondaryColor: secondary };
+          }
+          return result;
+        };
+
+        // v62.0: Levenshtein edit distance — used by lookupTeam to tolerate Legacy Hockey's
+        // auto-truncated / typo'd school names (e.g. "BUFFLO" → "Buffalo"). Classic DP, O(n*m) time.
+        const levenshtein = (a, b) => {
+          if (a === b) return 0;
+          if (!a.length) return b.length;
+          if (!b.length) return a.length;
+          const dp = new Array(b.length + 1);
+          for (let j = 0; j <= b.length; j++) dp[j] = j;
+          for (let i = 1; i <= a.length; i++) {
+            let prev = i;
+            let old = dp[0];
+            dp[0] = i;
+            for (let j = 1; j <= b.length; j++) {
+              const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+              const next = Math.min(prev + 1, dp[j] + 1, old + cost);
+              old = dp[j];
+              dp[j] = next;
+              prev = next;
+            }
+          }
+          return dp[b.length];
+        };
+
         // Team lookup function with fuzzy matching
         const lookupTeam = (searchName) => {
           if (!searchName) return null;
-          
+
           const normalizedSearch = searchName.toLowerCase().trim();
-          
+
           // Direct match
           if (MSHSL_TEAMS[normalizedSearch]) {
             return MSHSL_TEAMS[normalizedSearch];
           }
-          
+
           // Try variations
           const variations = [
             normalizedSearch,
@@ -402,7 +489,7 @@
             normalizedSearch.replace(/\//g, ' '),       // Replace slashes with spaces
             normalizedSearch.split(' ')[0],             // First word only
           ];
-          
+
           for (const variant of variations) {
             // Check if any key contains this variant
             for (const [key, team] of Object.entries(MSHSL_TEAMS)) {
@@ -415,8 +502,34 @@
               }
             }
           }
-          
+
+          // v62.0: tolerant match — compare against the first word of each team name.
+          // Catches Legacy Hockey truncations/typos like BUFFLO → Buffalo, Grd Rapids → Grand Rapids.
+          // Allowance: ~1 edit per 4 chars of the DB name, so 1 letter off on a 6-letter city, 2 off on 10.
+          if (normalizedSearch.length >= 4) {
+            let bestTeam = null, bestDist = Infinity;
+            for (const team of Object.values(MSHSL_TEAMS)) {
+              const firstWord = (team.name || '').toLowerCase().split(/[\s\/\-]/)[0];
+              if (firstWord.length < 4) continue;
+              const d = levenshtein(normalizedSearch, firstWord);
+              const allowance = Math.max(1, Math.floor(firstWord.length / 4));
+              if (d <= allowance && d < bestDist) { bestDist = d; bestTeam = team; }
+            }
+            if (bestTeam) return bestTeam;
+          }
+
           return null;
+        };
+
+        // v62.0: Return the clean DB name for a pasted opponent string, or the original if no match.
+        // Fixes Legacy Hockey auto-truncations (BUFFLO → Buffalo). Used at paste time so the clean
+        // name lands in state and every display spot renders it correctly.
+        const cleanOpponentName = (raw) => {
+          if (!raw || typeof raw !== 'string') return raw;
+          const trimmed = raw.trim();
+          if (!trimmed || trimmed === 'TBD') return raw;
+          const found = lookupTeam(trimmed);
+          return found && found.name ? found.name : raw;
         };
 
         // Get sorted list of teams for dropdown
@@ -758,6 +871,10 @@
           // v61.3: capability flag for the mobile Web Share API path. Only true on devices whose browser
           // actually supports sharing files (iOS Safari, Android Chrome). Desktop browsers return false.
           const [canShareFiles, setCanShareFiles] = useState(false);
+          // v62.0: flag flipped true after the live team DB fetch completes successfully.
+          // Changing this state value triggers a re-render — the component then re-reads MSHSL_TEAMS
+          // (which the fetch reassigned at module scope) and renders the fresh team data.
+          const [teamsDbReady, setTeamsDbReady] = useState(false);
           const [helpContent, setHelpContent] = useState({ title: '', steps: [] });
           const [importStep, setImportStep] = useState('myTeamHome');
           const [importText, setImportText] = useState('');
@@ -1086,10 +1203,40 @@
             return () => { cancelled = true; };
           }, [shareImageData]);
 
+          // v62.0: fetch the live team DB from the published Google Sheet on mount.
+          // On success: replace the module-level MSHSL_TEAMS in-place and flip teamsDbReady
+          // so the component re-renders with the fresh data. On failure or an obviously
+          // short response (<100 teams): leave the baked-in MSHSL_TEAMS alone and log a
+          // warning. The app renders normally the whole time from the baked-in copy — the
+          // live fetch is additive, never load-bearing.
+          useEffect(() => {
+            let cancelled = false;
+            (async () => {
+              try {
+                const res = await fetch(SHEET_CSV_URL, { cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const text = await res.text();
+                const parsed = csvToTeamsDb(text);
+                const n = Object.keys(parsed).length;
+                if (n < 100) {
+                  console.warn(`⚠️ Live team DB fetch returned only ${n} teams — keeping baked-in fallback.`);
+                  return;
+                }
+                if (cancelled) return;
+                MSHSL_TEAMS = parsed;
+                setTeamsDbReady(true);
+                console.log(`✅ Loaded live team DB from Google Sheet (${n} teams).`);
+              } catch (e) {
+                console.warn('⚠️ Could not fetch live team DB — using baked-in fallback:', e && e.message);
+              }
+            })();
+            return () => { cancelled = true; };
+          }, []);
+
           // Helper Functions
           
           // Compress image before storing in localStorage
-          const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.7) => {
+          const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.7, fillWhiteBackground = false) => {
             return new Promise((resolve, reject) => {
               const reader = new FileReader();
               reader.onload = (e) => {
@@ -1098,18 +1245,25 @@
                   // Calculate new dimensions
                   let width = img.width;
                   let height = img.height;
-                  
+
                   if (width > maxWidth || height > maxHeight) {
                     const ratio = Math.min(maxWidth / width, maxHeight / height);
                     width = Math.floor(width * ratio);
                     height = Math.floor(height * ratio);
                   }
-                  
+
                   // Create canvas and compress
                   const canvas = document.createElement('canvas');
                   canvas.width = width;
                   canvas.height = height;
                   const ctx = canvas.getContext('2d');
+                  // v62.0: for logos with transparent backgrounds, paint white first so the resulting
+                  // JPEG (no alpha channel) doesn't render transparent pixels as BLACK. Scoped — only
+                  // the Post-HS logo callers pass true; diagram image compression keeps old behavior.
+                  if (fillWhiteBackground) {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, width, height);
+                  }
                   ctx.drawImage(img, 0, 0, width, height);
                   
                   // Convert to JPEG with compression
@@ -1631,6 +1785,9 @@
               const confIdx = lines.findIndex(l => l.includes('Conference:'));
               if (confIdx >= 0) {
                 conference = lines[confIdx].split(':')[1]?.trim() || '';
+                // v62.0: hockey people infer "Conference" from the name itself — strip the word
+                // if Legacy Hockey hands over "Lake Conference", "Wright County Conference", etc.
+                conference = conference.replace(/\s*conference\s*$/i, '').trim();
               }
               
               // Parse Assistant Coaches
@@ -1967,7 +2124,14 @@
               }
               
               console.log('📋 ========== PARSE COMPLETE ==========');
-              
+
+              // v62.0: clean truncated/typo opponent names from Legacy Hockey (BUFFLO → Buffalo)
+              // by looking them up in MSHSL_TEAMS. This runs once at paste time, so every downstream
+              // display spot gets the clean name without further changes.
+              if (lastGame && lastGame.opponent) lastGame.opponent = cleanOpponentName(lastGame.opponent);
+              if (nextGame && nextGame.opponent) nextGame.opponent = cleanOpponentName(nextGame.opponent);
+              if (currentGame && currentGame.opponent) currentGame.opponent = cleanOpponentName(currentGame.opponent);
+
               return { teamName, nickname, record, section, conference, headCoach, assistantCoaches, studentManager, stats, lastGame, nextGame, currentGame, homeArena };
             } catch (error) {
               console.error('Error parsing home page:', error);
@@ -1990,13 +2154,10 @@
                 const line = lines[i];
                 
                 // Try tab-separated first
-                // v61.6: the Roster page has an empty Photo column, so drop empty cells here (v60.10 behavior).
-                // (The keep-empty-cells fix stays in the STATS readers, where a blank Grade must hold its column.)
-                const fields = line.split('\t').map(f => f.trim()).filter(f => f);
-                // v61.6: player with no Grade listed -> insert a blank grade so the row still imports
-                if (fields.length >= 3 && /^\d+$/.test(fields[0]) && /^(F|D|G|D\|F|F\|D)$/.test(fields[2]) && !/^\d{1,2}$/.test(fields[3] || '')) {
-                  fields.splice(3, 0, '');
-                }
+                // v61: preserve empty cells so column positions stay stable (blank Grade in 25-26+ format
+                // was dropping cells and shifting every stat one position left).
+                const fields = line.split('\t').map(f => f.trim());
+                while (fields.length && fields[fields.length - 1] === '') fields.pop();
 
                 if (fields.length >= 4) {
                   // Tab-separated format
@@ -2005,7 +2166,7 @@
                   const position = fields[2];
                   const grade = fields[3];
                   
-                  if (/^\d+$/.test(number) && (/^[FDG]$/.test(position) || position === 'D|F' || position === 'F|D') && (/^\d{1,2}$/.test(grade) || grade === '')) {
+                  if (/^\d+$/.test(number) && (/^[FDG]$/.test(position) || position === 'D|F' || position === 'F|D') && /^\d{1,2}$/.test(grade)) {
                     console.log('✓ Found player (tab-separated):', { number, name, position, grade });
                     
                     // Strip (Capt.) or (Capt) or * from names
@@ -3546,6 +3707,15 @@
           const availablePlayers = myTeamData.roster.filter(p => !getPlayersInLines().has(p.id));
           const currentStepInfo = importSteps.find(s => s.key === importStep);
 
+          // v62.0: game-1 detection per side. When a team has no games played, the 4 header stat tiles
+          // (Goals/Game, GA/Game, Power Play, Penalty Kill) show as empty values instead of 0.00/0% —
+          // because "0.00 goals per game" with zero games played isn't a stat, it's a missing value.
+          // From game 2 onward even 0.00 is meaningful and shows normally.
+          const myTeamIsGame1  = ((myTeamData.record?.w || 0) + (myTeamData.record?.l || 0) + (myTeamData.record?.t || 0)) === 0;
+          const oppTeamIsGame1 = ((opponentData.record?.w || 0) + (opponentData.record?.l || 0) + (opponentData.record?.t || 0)) === 0;
+          const myStat  = (fn) => myTeamIsGame1  ? '' : fn();
+          const oppStat = (fn) => oppTeamIsGame1 ? '' : fn();
+
           // Main Render
           return (
             <div className="min-h-screen bg-gray-50">
@@ -3790,7 +3960,7 @@
 
                             const handleLogoUploadPostHS = (field, file) => {
                               if (!file) return;
-                              compressImage(file, 200, 200, 0.8).then(compressed => {
+                              compressImage(file, 200, 200, 0.8, true).then(compressed => {
                                 setMyTeamSetup(prev => ({
                                   ...prev,
                                   postHSInfo: {
@@ -3814,7 +3984,7 @@
                                   for (const type of item.types) {
                                     if (type.startsWith('image/')) {
                                       const blob = await item.getType(type);
-                                      compressImage(blob, 200, 200, 0.8).then(compressed => {
+                                      compressImage(blob, 200, 200, 0.8, true).then(compressed => {
                                         setMyTeamSetup(prev => ({
                                           ...prev,
                                           postHSInfo: {
@@ -4783,19 +4953,19 @@
                   <div className="flex flex-col gap-1">
                     <div className="bg-white rounded text-center flex-1 flex flex-col justify-center" style={{ padding: '2px 1px', border: `2px solid ${myTeamSetup.colors.secondary}` }}>
                       <div style={{ fontSize: 'clamp(6px, 0.7vw, 8px)', color: myTeamSetup.colors.primary }} className="font-semibold">Goals/Game</div>
-                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: myTeamSetup.colors.primary }} className="font-bold">{myTeamData.stats.gpg.toFixed(2)}</div>
+                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: myTeamSetup.colors.primary }} className="font-bold">{myStat(() => myTeamData.stats.gpg.toFixed(2))}</div>
                     </div>
                     <div className="bg-white rounded text-center flex-1 flex flex-col justify-center" style={{ padding: '2px 1px', border: `2px solid ${myTeamSetup.colors.secondary}` }}>
                       <div style={{ fontSize: 'clamp(6px, 0.7vw, 8px)', color: myTeamSetup.colors.primary }} className="font-semibold">GA/Game</div>
-                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: myTeamSetup.colors.primary }} className="font-bold">{myTeamData.stats.gapg.toFixed(2)}</div>
+                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: myTeamSetup.colors.primary }} className="font-bold">{myStat(() => myTeamData.stats.gapg.toFixed(2))}</div>
                     </div>
                     <div className="bg-white rounded text-center flex-1 flex flex-col justify-center" style={{ padding: '2px 1px', border: `2px solid ${myTeamSetup.colors.secondary}` }}>
                       <div style={{ fontSize: 'clamp(6px, 0.7vw, 8px)', color: myTeamSetup.colors.primary }} className="font-semibold">Power Play</div>
-                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: myTeamSetup.colors.primary }} className="font-bold">{myTeamData.stats.ppPct}%</div>
+                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: myTeamSetup.colors.primary }} className="font-bold">{myStat(() => `${myTeamData.stats.ppPct}%`)}</div>
                     </div>
                     <div className="bg-white rounded text-center flex-1 flex flex-col justify-center" style={{ padding: '2px 1px', border: `2px solid ${myTeamSetup.colors.secondary}` }}>
                       <div style={{ fontSize: 'clamp(6px, 0.7vw, 8px)', color: myTeamSetup.colors.primary }} className="font-semibold">Penalty Kill</div>
-                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: myTeamSetup.colors.primary }} className="font-bold">{myTeamData.stats.pkPct}%</div>
+                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: myTeamSetup.colors.primary }} className="font-bold">{myStat(() => `${myTeamData.stats.pkPct}%`)}</div>
                     </div>
                   </div>
 
@@ -4836,19 +5006,19 @@
                   <div className="flex flex-col gap-1">
                     <div className="bg-white rounded text-center flex-1 flex flex-col justify-center" style={{ padding: '2px 1px', border: `2px solid ${opponentColors.secondary}` }}>
                       <div style={{ fontSize: 'clamp(6px, 0.7vw, 8px)', color: opponentColors.primary }} className="font-semibold">Goals/Game</div>
-                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: opponentColors.primary }} className="font-bold">{opponentData.stats.gpg.toFixed(2)}</div>
+                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: opponentColors.primary }} className="font-bold">{oppStat(() => opponentData.stats.gpg.toFixed(2))}</div>
                     </div>
                     <div className="bg-white rounded text-center flex-1 flex flex-col justify-center" style={{ padding: '2px 1px', border: `2px solid ${opponentColors.secondary}` }}>
                       <div style={{ fontSize: 'clamp(6px, 0.7vw, 8px)', color: opponentColors.primary }} className="font-semibold">GA/Game</div>
-                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: opponentColors.primary }} className="font-bold">{opponentData.stats.gapg.toFixed(2)}</div>
+                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: opponentColors.primary }} className="font-bold">{oppStat(() => opponentData.stats.gapg.toFixed(2))}</div>
                     </div>
                     <div className="bg-white rounded text-center flex-1 flex flex-col justify-center" style={{ padding: '2px 1px', border: `2px solid ${opponentColors.secondary}` }}>
                       <div style={{ fontSize: 'clamp(6px, 0.7vw, 8px)', color: opponentColors.primary }} className="font-semibold">Power Play</div>
-                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: opponentColors.primary }} className="font-bold">{opponentData.stats.ppPct}%</div>
+                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: opponentColors.primary }} className="font-bold">{oppStat(() => `${opponentData.stats.ppPct}%`)}</div>
                     </div>
                     <div className="bg-white rounded text-center flex-1 flex flex-col justify-center" style={{ padding: '2px 1px', border: `2px solid ${opponentColors.secondary}` }}>
                       <div style={{ fontSize: 'clamp(6px, 0.7vw, 8px)', color: opponentColors.primary }} className="font-semibold">Penalty Kill</div>
-                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: opponentColors.primary }} className="font-bold">{opponentData.stats.pkPct}%</div>
+                      <div style={{ fontSize: 'clamp(16px, 1.8vw, 22px)', color: opponentColors.primary }} className="font-bold">{oppStat(() => `${opponentData.stats.pkPct}%`)}</div>
                     </div>
                   </div>
 
@@ -5383,8 +5553,8 @@
 
                       {/* COL 2 (7%): Goals/Game + GA/Game stacked */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', justifyContent: 'center', padding: '2px 0' }}>
-                        <OppStatBox label="Goals/Game" value={opponentData.stats.gpg.toFixed(2)} />
-                        <OppStatBox label="GA/Game"    value={opponentData.stats.gapg.toFixed(2)} />
+                        <OppStatBox label="Goals/Game" value={oppStat(() => opponentData.stats.gpg.toFixed(2))} />
+                        <OppStatBox label="GA/Game"    value={oppStat(() => opponentData.stats.gapg.toFixed(2))} />
                       </div>
 
                       {/* COL 3 (40%): Offensive Leaders — Mini Cards */}
@@ -5465,10 +5635,10 @@
 
                       {/* COL 4 (34%): 2x3 stat box grid — all same font size */}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '3px', padding: '2px 8px 2px 2px' }}>
-                        <OppStatBox label="Power Play"  value={`${opponentData.stats.ppPct}%`} />
+                        <OppStatBox label="Power Play"  value={oppStat(() => `${opponentData.stats.ppPct}%`)} />
                         <OppStatBox label="PPG/Opp"     value={oppSpecialTeamsManual.ppg  || '—'} />
                         <OppStatBox label="SHGA"        value={oppSpecialTeamsManual.shga || '—'} />
-                        <OppStatBox label="Penalty Kill" value={`${opponentData.stats.pkPct}%`} />
+                        <OppStatBox label="Penalty Kill" value={oppStat(() => `${opponentData.stats.pkPct}%`)} />
                         <OppStatBox label="PKGA/Opp"    value={oppSpecialTeamsManual.pkga || '—'} />
                         <OppStatBox label="SHG"         value={oppSpecialTeamsManual.shg  || '—'} />
                       </div>
