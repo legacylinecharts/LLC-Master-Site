@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v62.2</title>
+    <title>Legacy Line Charts v62.4</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
@@ -2195,10 +2195,13 @@
                     let height = '';
                     let weight = '';
                     
-                    // Extract height (format like 6' 3" or 5' 10")
+                    // Extract height (format like 6' 3" or 5' 10", also 6'1.5")
+                    // v62.4: inches part now optionally allows a .5 or .0 fraction so Legacy Hockey
+                    // heights like "6'1.5"" (Miles Breitzman, Alexandria Oct 13 test) parse correctly
+                    // instead of silently falling through to empty.
                     for (let j = 4; j < fields.length; j++) {
                       const field = fields[j];
-                      const heightMatch = field.match(/^(\d)'[\s]*(\d{1,2})"?$/);
+                      const heightMatch = field.match(/^(\d)'[\s]*(\d{1,2}(?:\.\d)?)"?$/);
                       if (heightMatch) {
                         height = `${heightMatch[1]}' ${heightMatch[2]}"`;
                         console.log(`  → Found height: ${height} for ${name}`);
@@ -2216,18 +2219,26 @@
                       }
                     }
                     
-                    // FIX 2: Extract shoots/handed from correct column
-                    for (let j = 5; j < fields.length; j++) {
+                    // Extract shoots/handed from any field after grade.
+                    // v62.3: loop starts at j=4 (grade's position +1) instead of j=5. When a player's
+                    // row has blank height AND blank weight, filter(f=>f) collapses those cells, and
+                    // "Right"/"Left" lands at fields[4] where the old loop never looked — the shoots
+                    // disappeared from the player card entirely (Dylan Nelson Oct 13 report).
+                    // v62.4: added "Catches Left" / "Catches Right" matches — Legacy Hockey's goalie
+                    // shoots field uses that exact word order (Owen Bruder, Brady Schluter Alexandria
+                    // Oct 13 test). Previously only "Left Catch" / "Right Catch" matched, so every
+                    // goalie's catches-hand was silently dropped.
+                    for (let j = 4; j < fields.length; j++) {
                       const field = fields[j];
-                      if (field === 'LC' || field.includes('Left Catch')) {
+                      if (field === 'LC' || field.includes('Left Catch') || field.includes('Catches Left')) {
                         handed = 'L';
                         shoots = 'L';
-                        console.log(`  → Found shoots: LC for ${name}`);
+                        console.log(`  → Found shoots: Catches Left for ${name}`);
                         break;
-                      } else if (field === 'RC' || field.includes('Right Catch')) {
+                      } else if (field === 'RC' || field.includes('Right Catch') || field.includes('Catches Right')) {
                         handed = 'R';
                         shoots = 'R';
-                        console.log(`  → Found shoots: RC for ${name}`);
+                        console.log(`  → Found shoots: Catches Right for ${name}`);
                         break;
                       } else if (field === 'Left' || field === 'L') {
                         handed = 'L';
@@ -2301,7 +2312,8 @@
                     
                     // Extract height (format like 6' 3" or 5' 10")
                     let height = '';
-                    const heightMatch = afterGrade.match(/(\d)'[\s]*(\d{1,2})"/);
+                    // v62.4: inches part also allows a .5 or .0 fraction (match the tab-split path above)
+                    const heightMatch = afterGrade.match(/(\d)'[\s]*(\d{1,2}(?:\.\d)?)"/);
                     if (heightMatch) {
                       height = `${heightMatch[1]}' ${heightMatch[2]}"`;
                     }
@@ -3538,9 +3550,13 @@
                     marginBottom: '0px'
                   }}>
                     {/* Build info parts array, only include non-empty values */}
+                    {/* v62.3: always include a placeholder in the position slot so space-between
+                        keeps grade+DOB right-aligned even when the player has no handedness recorded.
+                        Previously a card with only "Sr. 2009" (missing shoots, height, weight) rendered
+                        the single item left-aligned because space-between with one child does nothing. */}
                     {(() => {
                       const parts = [];
-                      if (positionText) parts.push(positionText);
+                      parts.push(positionText || ' ');
                       if (player.height) parts.push(player.height);
                       if (player.weight) parts.push(`${player.weight} lbs`);
                       if (gradeDisplay) parts.push(gradeDisplay);
