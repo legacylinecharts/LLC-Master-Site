@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v62.0</title>
+    <title>Legacy Line Charts v62.2</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
@@ -1336,20 +1336,21 @@
             const now = new Date();
             const currentYear = now.getFullYear();
             const currentMonth = now.getMonth();
-            
-            let seasonStartYear;
-            if (currentMonth >= 4) {
-              seasonStartYear = currentYear;
-            } else {
-              seasonStartYear = currentYear - 1;
-            }
 
-            // Completed seasons = last 3 finished seasons (used in career import labels)
-            const completedStartYear = currentMonth >= 4 ? currentYear - 1 : currentYear - 2;
-
-            // Next game data import validation rolls Nov 1 (month >= 10)
-            // so coaches can use the app pre-season before new Legacy Hockey pages go live
-            const nextGameSeasonStartYear = currentMonth >= 10 ? currentYear : currentYear - 1;
+            // v62.2 (item 13): unified season flip date is JUNE 1 (currentMonth >= 5).
+            // Previously three different flip dates (May 1 twice, Nov 1 for next-game) caused
+            // false-alarm validator alerts in the fall when coaches paste fresh new-season data
+            // that Legacy Hockey publishes before game 1 (Oct 13/26 Delano test — pasting 26-27
+            // roster fired "needs 25-26 data" alert because next-game flip hadn't yet rolled).
+            // Everything now flips on the same day — current season label, completed-season
+            // labels, and the paste validator's expected year. If this flip date needs to move
+            // again, change ONLY this single constant and nothing else.
+            const SEASON_FLIP_MONTH = 5;  // 0-indexed: 5 = June
+            const seasonStartYear      = currentMonth >= SEASON_FLIP_MONTH ? currentYear     : currentYear - 1;
+            const completedStartYear   = currentMonth >= SEASON_FLIP_MONTH ? currentYear - 1 : currentYear - 2;
+            // nextGameSeasonStartYear kept as an alias of seasonStartYear so existing callers
+            // (nextGameSeasonFull) resolve to the same unified year — do not re-stagger.
+            const nextGameSeasonStartYear = seasonStartYear;
 
             const short = (y) => `'${String(y).slice(2)}-'${String(y+1).slice(2)}`;
             const fmtFull = (y) => `${y}-${String(y+1).slice(-2)}`;
@@ -1987,9 +1988,13 @@
                     }
                     
                     // Location line — arena, neutral site, or tournament name
-                    if (line && !line.includes('@') && !line.match(/^\d/) && 
-                        line !== 'Scheduled' && line.toUpperCase() !== 'SCHEDULED' && line.length > 5 && 
-                        (line.includes('Arena') || line.includes('Center') || line.includes('Ice') || 
+                    // v62.2 (item 14): staff-list guard — the comma-fallback rule below would otherwise
+                    // match "Assistant Coaches: Name1, Name2, …" and other staff lines, which then
+                    // render as italic "location" under NEXT GAME.
+                    if (line && !line.includes('@') && !line.match(/^\d/) &&
+                        line !== 'Scheduled' && line.toUpperCase() !== 'SCHEDULED' && line.length > 5 &&
+                        !/^(Assistant Coaches?|Head Coach|Student Managers?|Student Manager|Staff|Coaches?)\s*:/i.test(line) &&
+                        (line.includes('Arena') || line.includes('Center') || line.includes('Ice') ||
                          line.includes('Rink') || line.includes('Complex') || line.includes(',') ||
                          line.includes('Coliseum') || line.includes('Civic') || line.includes('Pavilion') ||
                          line.includes('Tournament') || line.includes('State') || line.includes('Section') ||
@@ -2098,9 +2103,11 @@
                       time = parts[1]?.trim() || '';
                     }
                     // Look for location — arena, neutral site, or tournament name
+                    // v62.2 (item 14): same staff-list guard as the primary path above.
                     const li = lines[i];
                     if (li && !li.includes('@') && !li.match(/^\d/) &&
                         li !== 'Scheduled' && li.length > 5 &&
+                        !/^(Assistant Coaches?|Head Coach|Student Managers?|Student Manager|Staff|Coaches?)\s*:/i.test(li) &&
                         (li.includes('Arena') || li.includes('Center') || li.includes('Ice') ||
                          li.includes('Rink') || li.includes('Complex') || li.includes(',') ||
                          li.includes('Coliseum') || li.includes('Civic') || li.includes('Pavilion') ||
@@ -2154,10 +2161,18 @@
                 const line = lines[i];
                 
                 // Try tab-separated first
-                // v61: preserve empty cells so column positions stay stable (blank Grade in 25-26+ format
-                // was dropping cells and shifting every stat one position left).
-                const fields = line.split('\t').map(f => f.trim());
-                while (fields.length && fields[fields.length - 1] === '') fields.pop();
+                // v61.6: the Roster page has an empty Photo column, so drop empty cells here (v60.10 behavior).
+                // (The keep-empty-cells fix stays in the STATS readers, where a blank Grade must hold its column.)
+                const fields = line.split('\t').map(f => f.trim()).filter(f => f);
+                // v61.6/v62.2 (item 15): valid-grade check accepts BOTH numeric grades ("10","11","12")
+                // AND Legacy Hockey's text abbreviations ("Fr","So","Jr","Sr", any case, optional period).
+                // Previously only numeric grades were accepted, so a row with "Jr" in the grade column
+                // got its grade blanked out via the splice guard and never made it to the player card.
+                const isGradeLike = (s) => /^(\d{1,2}|Fr|So|Jr|Sr)\.?$/i.test(s || '');
+                // v61.6: player with no Grade listed -> insert a blank grade so the row still imports
+                if (fields.length >= 3 && /^\d+$/.test(fields[0]) && /^(F|D|G|D\|F|F\|D)$/.test(fields[2]) && !isGradeLike(fields[3])) {
+                  fields.splice(3, 0, '');
+                }
 
                 if (fields.length >= 4) {
                   // Tab-separated format
@@ -2165,8 +2180,8 @@
                   const name = fields[1];
                   const position = fields[2];
                   const grade = fields[3];
-                  
-                  if (/^\d+$/.test(number) && (/^[FDG]$/.test(position) || position === 'D|F' || position === 'F|D') && /^\d{1,2}$/.test(grade)) {
+
+                  if (/^\d+$/.test(number) && (/^[FDG]$/.test(position) || position === 'D|F' || position === 'F|D') && (isGradeLike(grade) || grade === '')) {
                     console.log('✓ Found player (tab-separated):', { number, name, position, grade });
                     
                     // Strip (Capt.) or (Capt) or * from names
@@ -3067,6 +3082,10 @@
             if (grade === 11 || grade === '11th' || grade === '11') return 'Jr.';
             if (grade === 10 || grade === '10th' || grade === '10') return 'So.';
             if (grade === 9 || grade === '9th' || grade === '9') return 'Fr.';
+            // v62.2 (item 15): accept Legacy Hockey's text abbreviations (Fr/So/Jr/Sr, any case,
+            // optional period) so career-stats table rows display consistently with player cards.
+            const m = String(grade || '').trim().match(/^(Fr|So|Jr|Sr)\.?$/i);
+            if (m) return m[1].charAt(0).toUpperCase() + m[1].charAt(1).toLowerCase() + '.';
             return grade;
           };
 
@@ -3272,8 +3291,14 @@
               : 0;
             
             const getGradeLabel = (grade) => {
+              // v62.2 (item 15): accept numeric grades OR text abbreviations (Fr/So/Jr/Sr, any case,
+              // optional period) and normalize to the dotted form the card expects ("Jr.", "Sr." etc).
               const gradeMap = { '9': 'Fr.', '10': 'So.', '11': 'Jr.', '12': 'Sr.' };
-              return gradeMap[grade] || grade;
+              if (gradeMap[grade]) return gradeMap[grade];
+              const txt = String(grade || '').trim();
+              const m = txt.match(/^(Fr|So|Jr|Sr)\.?$/i);
+              if (m) return m[1].charAt(0).toUpperCase() + m[1].charAt(1).toLowerCase() + '.';
+              return grade;
             };
             
             const formatPlusMinus = (value) => {
@@ -4276,7 +4301,10 @@
                               const type = stepTypeMap[importStep];
                               if (!type) return;
                               const sy = getSeasonYears();
-                              const result = validatePaste(text, type, sy.nextGameSeasonFull);
+                              // v62.2 (item 13): all import steps validate against the unified current season.
+                              // Previously used nextGameSeasonFull (Nov 1 flip) which was too late — Legacy
+                              // Hockey publishes new-season pages well before the first game.
+                              const result = validatePaste(text, type, sy.currentSeasonFull);
                               if (!result.valid) setPasteAlert({ visible: true, message: result.message });
                             }}
                             onChange={(e) => {
