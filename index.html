@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v62.4</title>
+    <title>Legacy Line Charts v62.5</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
@@ -1226,6 +1226,39 @@
                 MSHSL_TEAMS = parsed;
                 setTeamsDbReady(true);
                 console.log(`✅ Loaded live team DB from Google Sheet (${n} teams).`);
+
+                // v62.5: in SUBSCRIBER_MODE, after the live sheet loads, re-source the subscriber's
+                // OWN team logo + colors from the sheet by looking up their team name. This way a
+                // logo/color change in the Google Sheet shows up on the subscriber's site on the
+                // next page load — no rebuild needed. If the team isn't found in the sheet (or the
+                // fetch earlier failed and we never reached this line), the EMBEDDED_CONFIG baked-in
+                // values stay in place as the fallback. Only logo + colors are overridden — teamName,
+                // arena, careerStats, pronunciations, postHSInfo all remain from EMBEDDED_CONFIG /
+                // localStorage.
+                if (SUBSCRIBER_MODE) {
+                  try {
+                    const myName = myTeamSetup && myTeamSetup.teamName;
+                    if (myName) {
+                      const hit = lookupTeam(myName);
+                      if (hit && (hit.logo || hit.primaryColor || hit.secondaryColor)) {
+                        setMyTeamSetup(prev => ({
+                          ...prev,
+                          logo: hit.logo || prev.logo,
+                          colors: {
+                            ...(prev.colors || {}),
+                            primary: hit.primaryColor || prev.colors?.primary,
+                            secondary: hit.secondaryColor || prev.colors?.secondary
+                          }
+                        }));
+                        console.log(`🎨 Subscriber self-sync: refreshed logo and colors for "${myName}" from live sheet.`);
+                      } else {
+                        console.log(`ℹ️ Subscriber self-sync: no sheet entry matched "${myName}" — keeping embedded logo/colors.`);
+                      }
+                    }
+                  } catch (err) {
+                    console.warn('⚠️ Subscriber self-sync failed — keeping embedded logo/colors:', err && err.message);
+                  }
+                }
               } catch (e) {
                 console.warn('⚠️ Could not fetch live team DB — using baked-in fallback:', e && e.message);
               }
