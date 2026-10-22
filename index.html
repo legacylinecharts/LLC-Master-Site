@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Line Charts v62.5</title>
+    <title>Legacy Line Charts v62.6</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
@@ -530,6 +530,59 @@
           if (!trimmed || trimmed === 'TBD') return raw;
           const found = lookupTeam(trimmed);
           return found && found.name ? found.name : raw;
+        };
+
+        // v62.6: fuzzy player match for parsePlayerStats. Rules (any of these is a match, ranked by priority):
+        //   1. Exact full-name match (case-insensitive) — the common case for Legacy Hockey data
+        //   2. Last name Levenshtein ≤ 2  AND  (first-name Lev ≤ 2  OR  one first name is a prefix of the other)
+        // Rationale: tolerates typos ("Anderson" ↔ "Andersen"), prefix-style nickname↔formal pairs
+        // ("Jon" ↔ "Jonathan", "Alex" ↔ "Alexander"), without false-matching siblings (Lance ↔ Daniel differ too much on firstName).
+        // Won't catch substitution nicknames (Mike ↔ Michael, Jake ↔ Jacob) — those make a diagnosable "0 stats shown"
+        // failure that a coach fixes by making names consistent in Legacy Hockey.
+        // When multiple candidates match the fuzzy rule, the one with the lowest total edit distance wins.
+        // NUMBER IS NOT USED — jersey numbers change year-over-year, so matching on number breaks continuity
+        // (Lance Halonen #42 → #12 with brother Daniel having worn #12 before was the breaking case).
+        const findRosterPlayerFuzzy = (candidates, cleanName, positionFilter) => {
+          if (!cleanName) return null;
+          const parts = cleanName.trim().split(/\s+/);
+          if (parts.length < 1) return null;
+          const inLast  = (parts.pop() || '').toLowerCase();
+          const inFirst = (parts.join(' ') || '').toLowerCase();
+          if (!inLast) return null;
+
+          // Priority 1: exact full-name match (ignore case + Capt./* decoration)
+          for (const p of candidates) {
+            if (positionFilter && !positionFilter(p)) continue;
+            const stored = (p.name || '').trim().toLowerCase();
+            const storedStripped = (p.name || '').replace(/\s*\(Capt\.?\)/i,'').replace(/\*/g,'').trim().toLowerCase();
+            if (stored === cleanName.trim().toLowerCase() || storedStripped === cleanName.trim().toLowerCase()) {
+              return p;
+            }
+          }
+
+          // Priority 2: fuzzy. lastName Lev ≤ 2 AND one of these on firstName:
+          //   • Lev ≤ 2 (small typos)
+          //   • one is a prefix of the other (Jon↔Jonathan, Alex↔Alexander, Will↔William)
+          //   • same first 3 chars (Nick↔Nicholas — not prefix because K vs H)
+          // Pick candidate with lowest total edit distance.
+          let best = null, bestDist = Infinity;
+          for (const p of candidates) {
+            if (positionFilter && !positionFilter(p)) continue;
+            const pLast  = (p.lastName  || '').toLowerCase();
+            const pFirst = (p.firstName || '').toLowerCase();
+            if (!pLast || !pFirst || !inFirst) continue;
+            const lastDist = levenshtein(pLast, inLast);
+            if (lastDist > 2) continue;
+            const firstDist = levenshtein(pFirst, inFirst);
+            const firstPrefix = pFirst.length >= 2 && inFirst.length >= 2 &&
+              (pFirst.startsWith(inFirst) || inFirst.startsWith(pFirst));
+            const first3Same  = pFirst.length >= 3 && inFirst.length >= 3 &&
+              pFirst.substring(0, 3) === inFirst.substring(0, 3);
+            if (firstDist > 2 && !firstPrefix && !first3Same) continue;
+            const total = lastDist + Math.min(firstDist, firstPrefix ? 1 : (first3Same ? 2 : firstDist));
+            if (total < bestDist) { bestDist = total; best = p; }
+          }
+          return best;
         };
 
         // Get sorted list of teams for dropdown
@@ -2490,13 +2543,10 @@
                 const cleanName = (() => { const p = name.trim().split(/\s+/); const r = []; for (const t of p) { const tc = t.replace(/\*+$/, ''); if (/[a-z]$/.test(tc)) r.push(tc); else break; } return r.length > 0 ? r.join(' ') : p[0]; })();
 
                 if (inSkaterSection) {
-                  const player = updatedRoster.find(p =>
-                    p.number === number &&
-                    p.position !== 'G' &&
-                    (p.name === cleanName ||
-                     p.name.replace(/\s*\(Capt\.?\)/i,'').replace(/\*/g,'').trim() === cleanName ||
-                     p.lastName === cleanName.split(' ').pop())
-                  );
+                  // v62.6: fuzzy match on name (no number). Handles jersey number changes
+                  // year-over-year and tolerates typos/prefix-nicknames. See findRosterPlayerFuzzy
+                  // for the full rules.
+                  const player = findRosterPlayerFuzzy(updatedRoster, cleanName, (p) => p.position !== 'G');
 
                   if (player && fields.length >= (6 + fieldOffset)) {
                     const currentStats = {
@@ -2549,13 +2599,9 @@
                   }
 
                 } else if (inGoalieSection) {
-                  const player = updatedRoster.find(p =>
-                    p.number === number &&
-                    p.position === 'G' &&
-                    (p.name === cleanName ||
-                     p.name.replace(/\s*\(Capt\.?\)/i,'').replace(/\*/g,'').trim() === cleanName ||
-                     p.lastName === cleanName.split(' ').pop())
-                  );
+                  // v62.6: fuzzy match on name (no number). Same rules as the skater branch,
+                  // position filter switched to G.
+                  const player = findRosterPlayerFuzzy(updatedRoster, cleanName, (p) => p.position === 'G');
 
                   if (player && player.goalieStats && fields.length >= (10 + fieldOffset)) {
                     const currentGoalieStats = {
